@@ -226,10 +226,10 @@ export const dashboardConfig: DashboardConfig = {
 // 辅助函数（规范校验）
 // ============================================
 
-/** 校验一行中的 colSpan 之和是否等于 12 */
+/** 校验一行中的 colSpan 之和是否等于 24（Ant Design 24 列栅格） */
 export function validateRow(row: DashboardRow): boolean {
   const totalSpan = row.panels.reduce((sum, p) => sum + p.colSpan, 0);
-  return totalSpan === 12;
+  return totalSpan === 24;
 }
 
 /** 校验整个 Dashboard 配置 */

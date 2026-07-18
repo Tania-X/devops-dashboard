@@ -29,49 +29,57 @@ export default function ChartPanel({ config }: ChartPanelProps) {
         return;
     }
 
-    promise.then((res) => {
-      const data = res.data;
-      const option: echarts.EChartsOption = {
-        backgroundColor: 'transparent',
-        grid: { top: 40, right: 20, bottom: 20, left: 40, containLabel: true },
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          borderColor: '#333',
-        },
-        legend: {
-          data: config.series.map((s) => s.name),
-          textStyle: { color: '#aaaaaa' },
-        },
-        xAxis: {
-          type: 'category',
-          data: data.timeLabels,
-          axisLine: { lineStyle: { color: '#333' } },
-          axisLabel: { color: '#aaaaaa' },
-        },
-        yAxis: {
-          type: 'value',
-          axisLine: { lineStyle: { color: '#333' } },
-          axisLabel: { color: '#aaaaaa', formatter: '{value}%' },
-          splitLine: { lineStyle: { color: '#333' } },
-        },
-        series: config.series.map((s) => ({
-          name: s.name,
-          type: (config.chartType === 'area' ? 'line' : config.chartType) as 'line' | 'bar',
-          data: (data as unknown as Record<string, unknown>)[s.dataKey] as number[],
-          smooth: true,
-          lineStyle: { color: s.color, width: 2 },
-          itemStyle: { color: s.color },
-          areaStyle:
-            config.chartType === 'area'
-              ? { opacity: 0.1, color: s.color }
-              : undefined,
-        })),
-      };
+    promise
+      .then((res) => {
+        const data = res.data;
+        const option: echarts.EChartsOption = {
+          backgroundColor: 'transparent',
+          grid: { top: 40, right: 20, bottom: 20, left: 40, containLabel: true },
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            borderColor: '#333',
+          },
+          legend: {
+            data: config.series.map((s) => s.name),
+            textStyle: { color: '#aaaaaa' },
+            top: 0,
+            left: 0,
+          },
+          xAxis: {
+            type: 'category',
+            data: data.timeLabels,
+            axisLine: { lineStyle: { color: '#333' } },
+            axisLabel: { color: '#aaaaaa' },
+          },
+          yAxis: {
+            type: 'value',
+            axisLine: { lineStyle: { color: '#333' } },
+            axisLabel: { color: '#aaaaaa', formatter: '{value}%' },
+            splitLine: { lineStyle: { color: '#333' } },
+          },
+          series: config.series.map((s) => ({
+            name: s.name,
+            type: (config.chartType === 'area' ? 'line' : config.chartType) as 'line' | 'bar',
+            data: (data as unknown as Record<string, unknown>)[s.dataKey] as number[],
+            smooth: true,
+            lineStyle: { color: s.color, width: 2 },
+            itemStyle: { color: s.color },
+            areaStyle:
+              config.chartType === 'area'
+                ? { opacity: 0.1, color: s.color }
+                : undefined,
+          })),
+        };
 
-      chartInstance.current?.setOption(option);
-      setLoading(false);
-    });
+        chartInstance.current?.setOption(option);
+      })
+      .catch((err) => {
+        console.error('[ChartPanel] API 请求失败:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     const handleResize = () => chartInstance.current?.resize();
     window.addEventListener('resize', handleResize);
@@ -97,13 +105,27 @@ export default function ChartPanel({ config }: ChartPanelProps) {
         fontWeight: 500,
       }}
     >
-      {loading ? (
-        <div style={{ height: config.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Spin />
-        </div>
-      ) : (
-        <div ref={chartRef} style={{ height: config.height }} />
-      )}
+      <div style={{ height: config.height, position: 'relative' }}>
+        {/* echarts 独占一个容器，React 不管理其内部 DOM */}
+        <div ref={chartRef} style={{ height: '100%', width: '100%' }} />
+
+        {/* loading 遮罩层作为兄弟节点，避免 React DOM diff 冲突 */}
+        {loading && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#1f1f1f',
+              zIndex: 1,
+            }}
+          >
+            <Spin />
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

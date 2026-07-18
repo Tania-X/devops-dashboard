@@ -7,7 +7,9 @@ import App from './App.tsx'
 async function bootstrap() {
   if (import.meta.env.DEV) {
     const { worker } = await import('./mocks/browser')
-    await worker.start()
+    await worker.start({
+      onUnhandledRequest: 'error',
+    })
   }
 
   createRoot(document.getElementById('root')!).render(

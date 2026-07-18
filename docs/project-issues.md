@@ -216,17 +216,124 @@ export type ColSpan = 6 | 8 | 12 | 16 | 24;
 
 ---
 
-## 附录：最终可用性检查
+## 七、Dashboard 图表渲染问题链
 
-```bash
-# 环境
-fnm --version
-node -v
-npm -v
+### 7.1 ChartPanel 一直转圈，API 请求未发出
 
-# 构建
-npm run build   # 应无 TS 错误，成功生成 dist/
-npm run dev     # 应正常启动，MSW 拦截 API，Dashboard 填满视口
+**现象**：Dashboard 趋势图区域持续显示 Spin 加载动画，控制台 Network 面板看不到 `/api/dashboard/trend` 请求。
+
+**根因**：ChartPanel 使用条件渲染控制 `ref` 绑定的 DOM 节点：
+
+```tsx
+{loading ? (
+  <div> <Spin /> </div>          // ← 这个 div 没有 ref
+) : (
+  <div ref={chartRef} />         // ← loading 为 true 时不渲染
+)}
+```
+
+`useEffect` 一进入就判断 `if (!chartRef.current) return;`，导致后续的 `api.getDashboardTrend()` **一行都没执行**。
+
+**解决**：让 `ref={chartRef}` 的 div **始终存在于 DOM** 中，loading 状态改用绝对定位的遮罩层覆盖：
+
+```tsx
+<div style={{ position: 'relative' }}>
+  <div ref={chartRef} />           {/* 始终渲染 */}
+  {loading && <div style={{ position: 'absolute', inset: 0 }}> <Spin /> </div>}
+</div>
+```
+
+> **经验教训**：React 中需要操作 DOM（如 echarts.init）的节点，**不能放在条件渲染分支里**。`ref` 必须绑定到始终挂载的元素上，否则 `useEffect` + `ref` 的组合会失效。
+
+---
+
+### 7.2 MSW Service Worker 缓存导致新增 Handler 未生效
+
+**现象**：注销 Service Worker 并重新注册后，`/api/dashboard/metrics` 和 `/api/dashboard/alerts` 能被拦截，但刷新前一直报 `Failed to fetch`。
+
+**根因**：MSW v2 使用 Service Worker 拦截请求，浏览器会缓存旧的 Service Worker 脚本。新增 `customDashboardTrendHandler` 后，旧的 SW 仍在运行，不认识新的 handler，请求被 passthrough 到网络（`return fetch(requestClone)`），而本地没有真实后端，直接报错。
+
+**解决**：Chrome DevTools → Application → Service Workers → 找到 `mockServiceWorker.js` → 点击 **Unregister**，然后刷新页面。
+
+> **经验教训**：在 MSW 开发中新增/修改 handler 后，如果请求行为异常，优先检查 Service Worker 是否已更新。普通 F5 刷新不一定能触发 SW 更新，手动注销是最可靠的方式。
+
+---
+
+### 7.3 echarts 与 React 虚拟 DOM 冲突（`removeChild` 报错）
+
+**现象**：折线图一闪而过，然后整个图表区域空白，控制台报错：
+
+```text
+NotFoundError: Failed to execute 'removeChild' on 'Node':
+The node to be removed is not a child of this node.
+```
+
+**根因**：echarts 调用 `echarts.init(chartRef.current)` 时，会在该 DOM 节点内部插入 `<canvas>` 等元素。React 不知道这些元素的存在。当 `loading` 从 `true` 变为 `false` 时，React 尝试移除遮罩层的 `div`，发现真实 DOM 结构和虚拟 DOM 不一致（多了一个 echarts 插入的 canvas 容器），`removeChild` 失败。
+
+**解决**：**echarts 容器 和 loading 遮罩层 必须是兄弟节点**，不能嵌套在同一个 React 管理的父节点内：
+
+```tsx
+{/* 错误：echarts 和 Spin 在同一个 div 内 */}
+<div ref={chartRef}>             {/* echarts 会往这里插 canvas */}
+  {loading && <div> <Spin /> </div>}
+</div>
+
+{/* 正确：兄弟节点，互不干扰 */}
+<div style={{ position: 'relative' }}>
+  <div ref={chartRef} />         {/* echarts 独占，React 不管内部 */}
+  {loading && <div> <Spin /> </div>}  {/* React 只管理这个节点 */}
+</div>
+```
+
+> **经验教训**：任何直接操作 DOM 的库（echarts、D3、Chart.js 等）与 React 共存时，**不能让第三方库和 React 条件渲染共享同一个父节点**。给第三方库一个独立的容器，React 条件渲染放在兄弟节点上，是避免 DOM diff 冲突的标准做法。
+
+---
+
+### 7.4 栅格校验硬编码了 12 列
+
+**现象**：控制台报错 `[DashboardConfig] 配置校验失败: 第 X 行栅格之和不等于 12`。
+
+**根因**：`validateRow` 函数写死了 `=== 12`，但 Ant Design 5.x 的 `Row/Col` 是 **24 列栅格**。
+
+**解决**：校验逻辑改为 `=== 24`。
+
+> **经验教训**：见 §5.1，再次印证了使用 UI 框架前必须确认其栅格列数。Ant Design 是 24 列，不要按 Bootstrap 的 12 列习惯配置。
+
+---
+
+### 7.5 图例与时间轴重叠
+
+**现象**：echarts 默认图例（"CPU 使用率 / 内存使用率"）在顶部居中，与 xAxis 的时间标签区域发生视觉重叠。
+
+**根因**：echarts 默认 `legend` 位置为顶部居中，未给图表内容留出足够间距。
+
+**解决**：显式设置图例定位到左上角：
+
+```typescript
+legend: {
+  data: config.series.map((s) => s.name),
+  textStyle: { color: '#aaaaaa' },
+  top: 0,
+  left: 0,
+}
+```
+
+---
+
+### 7.6 时间标签缺少日期
+
+**现象**：xAxis 时间标签只显示 `14:00`，无法区分是哪一天的 14:00。
+
+**根因**：Mock 数据生成时只取了 `HH:mm`。
+
+**解决**：时间标签格式改为 `MM-DD HH:mm`：
+
+```typescript
+const month = String(d.getMonth() + 1).padStart(2, '0');
+const day = String(d.getDate()).padStart(2, '0');
+const hour = String(d.getHours()).padStart(2, '0');
+const minute = String(d.getMinutes()).padStart(2, '0');
+timeLabels.push(`${month}-${day} ${hour}:${minute}`);
 ```
 
 ---

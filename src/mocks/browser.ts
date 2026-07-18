@@ -2,7 +2,8 @@ import { setupWorker } from 'msw/browser';
 import { http, HttpResponse, delay } from 'msw';
 import { faker } from '@faker-js/faker';
 import { getDevOpsDashboardAPIMock } from '../api/client';
-import type { ServerItem, ServerDetail, PagedResultServerItem, LogItem, PagedResultLogItem, DeploymentItem, DeploymentHistoryItem } from '../api/model';
+import type { ServerItem, ServerDetail, PagedResultServerItem, LogItem, PagedResultLogItem, DeploymentItem, DeploymentHistoryItem, DashboardMetrics, DashboardTrend, AlertItem } from '../api/model';
+import { MetricValueStatus } from '../api/model';
 
 // ============================================
 // Log Mock 数据池（支持级别筛选 + 关键词搜索 + 分页）
@@ -297,10 +298,112 @@ const customDeploymentHistoryHandler = http.get('*/api/deployments/:id/history',
 });
 
 // ============================================
+// Dashboard Mock 数据池
+// ============================================
+
+const DASHBOARD_METRICS: DashboardMetrics = {
+  cpu: { current: 67.5, status: MetricValueStatus.warning },
+  memory: { current: 54.2, status: MetricValueStatus.normal },
+  disk: { current: 78.0, status: MetricValueStatus.warning },
+  alertCount: 3,
+};
+
+function generateTrendData(): DashboardTrend {
+  const now = new Date();
+  const timeLabels: string[] = [];
+  const cpuData: number[] = [];
+  const memoryData: number[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 3600000);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hour = String(d.getHours()).padStart(2, '0');
+    const minute = String(d.getMinutes()).padStart(2, '0');
+    timeLabels.push(`${month}-${day} ${hour}:${minute}`);
+
+    // 模拟有波动的趋势数据，基础值 + 随机波动
+    const baseCpu = 40 + Math.sin(i * 0.8) * 15;
+    cpuData.push(Math.round(Math.max(10, Math.min(95, baseCpu + faker.number.int({ min: -8, max: 10 }))) * 10) / 10);
+
+    const baseMem = 50 + Math.cos(i * 0.6) * 12;
+    memoryData.push(Math.round(Math.max(15, Math.min(90, baseMem + faker.number.int({ min: -6, max: 8 }))) * 10) / 10);
+  }
+
+  return { timeLabels, cpuData, memoryData };
+}
+
+const DASHBOARD_TREND = generateTrendData();
+
+const DASHBOARD_ALERTS: AlertItem[] = [
+  {
+    id: 'alert-001',
+    level: 'critical' as any,
+    message: '服务器 srv-012 磁盘使用率超过 90%，当前 93%',
+    source: 'srv-012 (192.168.1.45)',
+    time: new Date(Date.now() - 15 * 60000).toISOString(),
+  },
+  {
+    id: 'alert-002',
+    level: 'warning' as any,
+    message: 'api-gateway 服务响应时间 P99 超过 500ms',
+    source: 'api-gateway',
+    time: new Date(Date.now() - 42 * 60000).toISOString(),
+  },
+  {
+    id: 'alert-003',
+    level: 'warning' as any,
+    message: '支付服务 payment-service 内存使用率持续上升',
+    source: 'payment-service',
+    time: new Date(Date.now() - 78 * 60000).toISOString(),
+  },
+  {
+    id: 'alert-004',
+    level: 'info' as any,
+    message: '每日备份任务已完成，耗时 4m32s',
+    source: 'backup-agent',
+    time: new Date(Date.now() - 120 * 60000).toISOString(),
+  },
+  {
+    id: 'alert-005',
+    level: 'critical' as any,
+    message: '数据库主从延迟超过 5 秒，当前 7.3s',
+    source: 'db-master (192.168.1.10)',
+    time: new Date(Date.now() - 180 * 60000).toISOString(),
+  },
+];
+
+/** 自定义 Dashboard Metrics Handler */
+const customDashboardMetricsHandler = http.get('*/api/dashboard/metrics', async () => {
+  console.log('[MSW] intercepted GET /api/dashboard/metrics');
+  await delay(200);
+  return HttpResponse.json(DASHBOARD_METRICS);
+});
+
+/** 自定义 Dashboard Trend Handler */
+const customDashboardTrendHandler = http.get('*/api/dashboard/trend', async () => {
+  console.log('[MSW] intercepted GET /api/dashboard/trend');
+  await delay(300);
+  return HttpResponse.json(DASHBOARD_TREND);
+});
+
+/** 自定义 Dashboard Alerts Handler */
+const customDashboardAlertsHandler = http.get('*/api/dashboard/alerts', async ({ request }) => {
+  console.log('[MSW] intercepted GET /api/dashboard/alerts');
+  await delay(200);
+  const url = new URL(request.url);
+  const limit = parseInt(url.searchParams.get('limit') || '5', 10);
+  return HttpResponse.json(DASHBOARD_ALERTS.slice(0, limit));
+});
+
+// ============================================
 // 启动 Worker — 自定义 handler 放前面优先匹配
 // ============================================
 
 export const worker = setupWorker(
+  customDashboardMetricsHandler,
+  customDashboardTrendHandler,
+  customDashboardAlertsHandler,
   customLogListHandler,
   customServerListHandler,
   customServerDetailHandler,
