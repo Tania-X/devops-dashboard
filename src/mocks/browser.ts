@@ -2,7 +2,7 @@ import { setupWorker } from 'msw/browser';
 import { http, HttpResponse, delay } from 'msw';
 import { faker } from '@faker-js/faker';
 import { getDevOpsDashboardAPIMock } from '../api/client';
-import type { ServerItem, ServerDetail, PagedResultServerItem, LogItem, PagedResultLogItem } from '../api/model';
+import type { ServerItem, ServerDetail, PagedResultServerItem, LogItem, PagedResultLogItem, DeploymentItem, DeploymentHistoryItem } from '../api/model';
 
 // ============================================
 // Log Mock 数据池（支持级别筛选 + 关键词搜索 + 分页）
@@ -222,6 +222,81 @@ const customServerDetailHandler = http.get('*/api/servers/:id', async ({ params 
 });
 
 // ============================================
+// Deployment Mock 数据池
+// ============================================
+
+const APP_NAMES = [
+  'api-gateway', 'user-service', 'order-service', 'payment-service',
+  'notification-service', 'auth-service', 'log-collector', 'monitor-agent',
+  'config-server', 'cache-proxy', 'search-engine', 'report-generator',
+  'data-sync', 'file-storage', 'web-frontend',
+];
+
+const ENV_LIST = ['dev', 'test', 'prod'] as const;
+
+function generateDeploymentHistory(count: number): DeploymentHistoryItem[] {
+  const histories: DeploymentHistoryItem[] = [];
+  const baseDate = new Date();
+  for (let i = 0; i < count; i++) {
+    const major = 2;
+    const minor = faker.number.int({ min: 0, max: 4 });
+    const patch = faker.number.int({ min: 0, max: 9 });
+    const version = `v${major}.${minor}.${patch}`;
+    const status = faker.helpers.arrayElement(['success', 'failed'] as const);
+    const date = new Date(baseDate.getTime() - i * faker.number.int({ min: 3600000, max: 86400000 * 3 }));
+    histories.push({
+      version,
+      operator: faker.person.fullName(),
+      durationSec: faker.number.int({ min: 30, max: 600 }),
+      status: status as any,
+      deployedAt: date.toISOString(),
+    });
+  }
+  return histories;
+}
+
+const DEPLOYMENT_HISTORY_MAP: Record<string, DeploymentHistoryItem[]> = {};
+
+const ALL_DEPLOYMENTS: DeploymentItem[] = APP_NAMES.map((appName, i) => {
+  const env = faker.helpers.arrayElement(ENV_LIST);
+  const historyCount = faker.number.int({ min: 3, max: 8 });
+  const histories = generateDeploymentHistory(historyCount);
+  const id = `app-${String(i + 1).padStart(3, '0')}`;
+  DEPLOYMENT_HISTORY_MAP[id] = histories;
+
+  const latest = histories[0];
+
+  // 大部分与最新历史状态一致，少量 pending/deploying
+  const rand = Math.random();
+  let status: string = latest.status;
+  if (rand > 0.90) status = 'deploying';
+  else if (rand > 0.80) status = 'pending';
+
+  return {
+    id,
+    appName,
+    version: latest.version,
+    env: env as any,
+    status: status as any,
+    lastDeployedAt: latest.deployedAt,
+  };
+});
+
+/** 自定义 Deployment List Handler */
+const customDeploymentListHandler = http.get('*/api/deployments', async () => {
+  await delay(300);
+  return HttpResponse.json(ALL_DEPLOYMENTS);
+});
+
+/** 自定义 Deployment History Handler */
+const customDeploymentHistoryHandler = http.get('*/api/deployments/:id/history', async ({ params }) => {
+  await delay(200);
+  const { id } = params;
+  const history = DEPLOYMENT_HISTORY_MAP[id as string] || [];
+  return HttpResponse.json(history);
+});
+
+// ============================================
 // 启动 Worker — 自定义 handler 放前面优先匹配
 // ============================================
 
@@ -229,5 +304,7 @@ export const worker = setupWorker(
   customLogListHandler,
   customServerListHandler,
   customServerDetailHandler,
+  customDeploymentListHandler,
+  customDeploymentHistoryHandler,
   ...getDevOpsDashboardAPIMock(),
 );
