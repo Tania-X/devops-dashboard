@@ -66,13 +66,18 @@ function generateLogList(count: number): LogItem[] {
   const LEVELS = ['INFO', 'WARN', 'ERROR'] as const;
   return Array.from({ length: count }, (_, i) => {
     const level = faker.helpers.arrayElement(LEVELS);
+    const service = faker.helpers.arrayElement(SERVICE_LIST);
     const date = faker.date.recent({ days: 7 });
+    const hostIndex = faker.number.int({ min: 0, max: 34 });
     return {
       id: `log-${String(i + 1).padStart(5, '0')}`,
       time: date.toISOString().replace('T', ' ').slice(0, 19),
       level: level as any,
-      service: faker.helpers.arrayElement(SERVICE_LIST),
+      service,
       content: generateLogContent(level),
+      sourceHost: `srv-${String(hostIndex + 1).padStart(3, '0')}`,
+      logPath: `/var/log/${service}/app.log`,
+      traceId: faker.string.alphanumeric(16),
     };
   });
 }
@@ -80,19 +85,31 @@ function generateLogList(count: number): LogItem[] {
 /** 固定日志数据池，按时间降序排列 */
 const ALL_LOGS = generateLogList(80).sort((a, b) => b.time.localeCompare(a.time));
 
-/** 自定义 Log List Handler — 支持级别筛选 + 关键词搜索 + 分页 */
+/** 自定义 Log List Handler — 支持级别/服务名/时间范围筛选 + 关键词搜索 + 分页 */
 const customLogListHandler = http.get('*/api/logs', async ({ request }) => {
   await delay(300);
 
   const url = new URL(request.url);
   const level = url.searchParams.get('level');
+  const service = url.searchParams.get('service');
   const keyword = url.searchParams.get('keyword');
+  const startTime = url.searchParams.get('startTime');
+  const endTime = url.searchParams.get('endTime');
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
   const pageSize = Math.max(1, parseInt(url.searchParams.get('pageSize') || '10', 10));
 
   let filtered = [...ALL_LOGS];
   if (level) {
     filtered = filtered.filter((l) => l.level === level);
+  }
+  if (service) {
+    filtered = filtered.filter((l) => l.service === service);
+  }
+  if (startTime) {
+    filtered = filtered.filter((l) => l.time >= startTime);
+  }
+  if (endTime) {
+    filtered = filtered.filter((l) => l.time <= endTime);
   }
   if (keyword) {
     const lowerKeyword = keyword.toLowerCase();
