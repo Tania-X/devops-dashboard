@@ -1,0 +1,453 @@
+openapi: 3.0.3
+info:
+  title: DevOps Dashboard API
+  description: 运维监控仪表盘一期 API 规范（Spec-Driven Development）
+  version: 1.0.0
+  contact:
+    name: DevOps Team
+
+servers:
+  - url: http://localhost:8080
+    description: Spring Boot 本地开发环境
+  - url: /
+    description: 前端 MSW Mock 环境（相对路径）
+
+paths:
+  /api/dashboard/metrics:
+    get:
+      operationId: getDashboardMetrics
+      summary: 获取仪表盘当前核心指标
+      description: 返回 CPU、内存、磁盘、告警数的当前瞬时值
+      tags:
+        - Dashboard
+      responses:
+        '200':
+          description: 成功返回当前指标
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
+
+  /api/dashboard/trend:
+    get:
+      operationId: getDashboardTrend
+      summary: 获取仪表盘趋势数据
+      description: 返回最近 6 小时的 CPU 和内存使用率时序数据
+      tags:
+        - Dashboard
+      parameters:
+        - name: hours
+          in: query
+          description: 查询最近多少小时的数据
+          schema:
+            type: integer
+            default: 6
+            minimum: 1
+            maximum: 24
+      responses:
+        '200':
+          description: 成功返回趋势数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardTrend'
+
+  /api/dashboard/alerts:
+    get:
+      operationId: getDashboardAlerts
+      summary: 获取最近告警列表
+      description: 返回最近的系统告警，默认 Top 5
+      tags:
+        - Dashboard
+      parameters:
+        - name: limit
+          in: query
+          description: 返回条数
+          schema:
+            type: integer
+            default: 5
+            maximum: 20
+      responses:
+        '200':
+          description: 成功返回告警列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertItem'
+
+  /api/servers:
+    get:
+      operationId: getServerList
+      summary: 获取服务器列表
+      description: 分页获取服务器资产列表，支持按状态筛选
+      tags:
+        - Server
+      parameters:
+        - name: page
+          in: query
+          description: 页码，从 1 开始
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: 每页条数
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          description: 状态筛选
+          schema:
+            type: string
+            enum: [running, stopped, maintenance]
+      responses:
+        '200':
+          description: 成功返回分页服务器列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResultServerItem'
+
+  /api/servers/{id}:
+    get:
+      operationId: getServerDetail
+      summary: 获取服务器详情
+      description: 根据 ID 获取单台服务器的详细信息（含磁盘、网卡）
+      tags:
+        - Server
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 服务器 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功返回服务器详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerDetail'
+        '404':
+          description: 服务器不存在
+
+  /api/logs:
+    get:
+      operationId: getLogList
+      summary: 获取日志列表
+      description: 分页获取系统日志，支持按级别筛选和关键词搜索
+      tags:
+        - Log
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: level
+          in: query
+          description: 日志级别筛选
+          schema:
+            type: string
+            enum: [INFO, WARN, ERROR]
+        - name: keyword
+          in: query
+          description: 内容关键词模糊搜索
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功返回分页日志列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResultLogItem'
+
+  /api/deployments:
+    get:
+      operationId: getDeploymentList
+      summary: 获取应用部署列表
+      description: 获取所有应用的部署状态概览
+      tags:
+        - Deployment
+      responses:
+        '200':
+          description: 成功返回部署列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeploymentItem'
+
+  /api/deployments/{id}/history:
+    get:
+      operationId: getDeploymentHistory
+      summary: 获取应用部署历史
+      description: 获取某个应用的最近部署记录
+      tags:
+        - Deployment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 应用 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功返回部署历史
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeploymentHistoryItem'
+
+components:
+  schemas:
+    # ---------- Dashboard ----------
+    DashboardMetrics:
+      type: object
+      required: [cpu, memory, disk, alertCount]
+      properties:
+        cpu:
+          $ref: '#/components/schemas/MetricValue'
+        memory:
+          $ref: '#/components/schemas/MetricValue'
+        disk:
+          $ref: '#/components/schemas/MetricValue'
+        alertCount:
+          type: integer
+          description: 未恢复告警总数
+
+    MetricValue:
+      type: object
+      required: [current, status]
+      properties:
+        current:
+          type: number
+          description: 当前百分比值
+          example: 45.2
+        status:
+          type: string
+          enum: [normal, warning, critical]
+          description: normal < 60, warning < 80, critical >= 80
+
+    DashboardTrend:
+      type: object
+      required: [timeLabels, cpuData, memoryData]
+      properties:
+        timeLabels:
+          type: array
+          items:
+            type: string
+          description: 时间标签数组，如 ["14:00", "15:00"]
+          example: ["14:00", "15:00", "16:00", "17:00", "18:00", "19:00"]
+        cpuData:
+          type: array
+          items:
+            type: number
+          description: CPU 使用率时序数据
+        memoryData:
+          type: array
+          items:
+            type: number
+          description: 内存使用率时序数据
+
+    AlertItem:
+      type: object
+      required: [id, level, message, source, time]
+      properties:
+        id:
+          type: string
+        level:
+          type: string
+          enum: [info, warning, critical]
+        message:
+          type: string
+          example: "CPU 使用率超过 80%，当前 87%"
+        source:
+          type: string
+          description: 告警来源，如服务器 IP 或服务名
+          example: "192.168.1.10"
+        time:
+          type: string
+          format: date-time
+          example: "2026-07-18T14:32:00Z"
+
+    # ---------- Server ----------
+    ServerItem:
+      type: object
+      required: [id, hostname, ip, os, cpuCores, memoryGb, status, uptime]
+      properties:
+        id:
+          type: string
+        hostname:
+          type: string
+          example: "prod-web-01"
+        ip:
+          type: string
+          example: "192.168.1.10"
+        os:
+          type: string
+          example: "CentOS 7.9"
+        cpuCores:
+          type: integer
+          example: 8
+        memoryGb:
+          type: integer
+          example: 32
+        status:
+          type: string
+          enum: [running, stopped, maintenance]
+        uptime:
+          type: string
+          description: 运行时长，人工可读格式
+          example: "15d 3h 24m"
+
+    PagedResultServerItem:
+      type: object
+      required: [list, total, page, pageSize]
+      properties:
+        list:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerItem'
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    ServerDetail:
+      allOf:
+        - $ref: '#/components/schemas/ServerItem'
+        - type: object
+          required: [diskPartitions, networkInterfaces]
+          properties:
+            diskPartitions:
+              type: array
+              items:
+                $ref: '#/components/schemas/DiskPartition'
+            networkInterfaces:
+              type: array
+              items:
+                $ref: '#/components/schemas/NetworkInterface'
+
+    DiskPartition:
+      type: object
+      required: [mount, totalGb, usedGb]
+      properties:
+        mount:
+          type: string
+          example: "/"
+        totalGb:
+          type: integer
+          example: 500
+        usedGb:
+          type: integer
+          example: 320
+
+    NetworkInterface:
+      type: object
+      required: [name, ip, mac]
+      properties:
+        name:
+          type: string
+          example: "eth0"
+        ip:
+          type: string
+          example: "192.168.1.10"
+        mac:
+          type: string
+          example: "00:16:3e:12:a5:1c"
+
+    # ---------- Log ----------
+    LogItem:
+      type: object
+      required: [id, time, level, service, content]
+      properties:
+        id:
+          type: string
+        time:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [INFO, WARN, ERROR]
+        service:
+          type: string
+          example: "order-service"
+        content:
+          type: string
+          example: "数据库连接池达到最大连接数"
+
+    PagedResultLogItem:
+      type: object
+      required: [list, total, page, pageSize]
+      properties:
+        list:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogItem'
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    # ---------- Deployment ----------
+    DeploymentItem:
+      type: object
+      required: [id, appName, version, env, status, lastDeployedAt]
+      properties:
+        id:
+          type: string
+        appName:
+          type: string
+          example: "order-service"
+        version:
+          type: string
+          example: "v2.3.1"
+        env:
+          type: string
+          enum: [dev, test, prod]
+        status:
+          type: string
+          enum: [pending, deploying, success, failed]
+        lastDeployedAt:
+          type: string
+          format: date-time
+
+    DeploymentHistoryItem:
+      type: object
+      required: [version, operator, durationSec, status, deployedAt]
+      properties:
+        version:
+          type: string
+          example: "v2.3.0"
+        operator:
+          type: string
+          example: "zhangsan"
+        durationSec:
+          type: integer
+          description: 部署耗时（秒）
+          example: 145
+        status:
+          type: string
+          enum: [success, failed]
+        deployedAt:
+          type: string
+          format: date-time
