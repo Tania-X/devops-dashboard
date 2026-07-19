@@ -44,6 +44,50 @@ go env -w GOTMPDIR=D:\temp
 
 ---
 
+## 2.5 Go 目录全面搬离 C 盘（模块缓存 / 编译缓存 / 二进制安装）
+
+**症状（连锁反应）**
+1. `go install github.com/go-delve/delve/cmd/dlv@latest` 报错：`There is not enough space on the disk`（模块下载到 C 盘）
+2. Delve 装好后，VSCode 按 `F5` Debug 再次报错：`write C:\Users\...\AppData\Local\go-build\...: There is not enough space on the disk`（编译缓存写到 C 盘）
+
+**原因**
+Go 默认会把以下三类文件全部写到 C 盘（Windows 默认 GOPATH 在 `C:\Users\<用户>\go`）：
+- **模块下载缓存**（`GOMODCACHE`）：`go install` / `go mod tidy` 时下载的依赖包
+- **编译缓存**（`GOCACHE`）：`go build` 时产生的中间产物，位于 `AppData\Local\go-build`
+- **二进制安装目录**（`GOBIN`）：`go install` 安装的可执行文件（如 `dlv.exe`）
+
+**解决**
+逐一改到 D 盘，并确保目录存在：
+
+```powershell
+# 模块下载缓存
+mkdir D:\tools\go-mod-cache -ErrorAction SilentlyContinue
+go env -w GOMODCACHE=D:\tools\go-mod-cache
+
+# 编译缓存
+mkdir D:\tools\go-cache -ErrorAction SilentlyContinue
+go env -w GOCACHE=D:\tools\go-cache
+
+# go install 安装的二进制（dlv.exe 等）
+mkdir D:\tools\go-workspace\bin -ErrorAction SilentlyContinue
+go env -w GOBIN=D:\tools\go-workspace\bin
+```
+
+**注意**
+- `go env -w GOPATH=...` 如果提示 `does not override conflicting OS environment variable`，说明 `GOPATH` 已在系统环境变量中设置，直接去系统环境变量里改即可，或保持现状只改上面三个变量。
+- 改完后**必须重启 VSCode / Terminal**，新配置才会生效。
+- 如果 C 盘已有旧的 `go-build` 缓存，可删除释放空间：`Remove-Item -Recurse -Force C:\Users\Administrator\AppData\Local\go-build`
+
+**验证**
+```powershell
+go env GOMODCACHE    # 应输出 D:\tools\go-mod-cache
+go env GOCACHE       # 应输出 D:\tools\go-cache
+go env GOBIN         # 应输出 D:\tools\go-workspace\bin
+dlv version          # 应正常输出版本号
+```
+
+---
+
 ## 3. Go 未使用的 import 编译错误
 
 **症状**
@@ -171,6 +215,9 @@ mkdir -p frontend backend/cmd/api backend/internal/api backend/internal/model ba
 | `GOPROXY` | `https://goproxy.cn,direct` | Go 模块国内加速下载 |
 | `GOSUMDB` | `off` | 关闭模块校验和检查（仅开发环境） |
 | `GOTMPDIR` | `D:\temp` | Go 编译临时文件目录（避免 C 盘满） |
+| `GOMODCACHE` | `D:\tools\go-mod-cache` | 模块下载缓存目录（避免 C 盘满） |
+| `GOCACHE` | `D:\tools\go-cache` | Go 编译缓存目录（避免 C 盘满） |
+| `GOBIN` | `D:\tools\go-workspace\bin` | `go install` 二进制安装目录 |
 | `GOPATH` | `D:\tools\go-workspace` | Go 工作区（依赖缓存位置） |
 | `VITE_USE_MSW` | `true` / 不设置 | 控制前端是否启用 MSW |
 
