@@ -3,7 +3,7 @@ import { defineConfig } from 'orval';
 export default defineConfig({
   'devops-api': {
     input: {
-      target: './spec/v1-api.yaml',
+      target: '../spec/v1-api.yaml',
     },
     output: {
       target: './src/api/client.ts',

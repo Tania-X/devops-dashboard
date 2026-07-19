@@ -5,7 +5,7 @@ import './index.css'
 import App from './App.tsx'
 
 async function bootstrap() {
-  if (import.meta.env.DEV) {
+  if (import.meta.env.VITE_USE_MSW === 'true') {
     const { worker } = await import('./mocks/browser')
     await worker.start({
       onUnhandledRequest: 'error',

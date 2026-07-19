@@ -19,7 +19,19 @@
       "Bash(D:/tools/fnm/node-versions/v20.20.2/installation/node.exe D:/tools/fnm/node-versions/v20.20.2/installation/node_modules/npm/bin/npm-cli.js run build)",
       "Bash(/d/tools/fnm/node-versions/node-versions/v20.20.2/installation/node.exe /d/tools/fnm/node-versions/node-versions/v20.20.2/installation/node_modules/npm/bin/npm-cli.js run build)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m 'init: DevOps Dashboard scaffold with Vite + React + TS *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(git commit -m 'feat\\(server\\): implement ServerList page with filtering, pagination and detail drawer *)",
+      "Bash(git commit *)",
+      "Bash(git commit -m 'feat\\(log\\): implement LogQuery page with level filter, keyword search and pagination *)",
+      "Bash(git commit -m 'feat\\(log\\): enhance LogQuery page with service filter, time range and expandable details *)",
+      "Bash(git commit -m 'feat: 实现部署状态页，添加 Agent 工作规范文档 *)",
+      "Bash(git commit -m 'fix: Dashboard 图表渲染问题链修复 *)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist)"
     ],
     "additionalDirectories": [
       "\\tmp"
