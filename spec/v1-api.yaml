@@ -17,7 +17,7 @@ paths:
     get:
       operationId: getDashboardMetrics
       summary: 获取仪表盘当前核心指标
-      description: 返回 CPU、内存、磁盘、告警数的当前瞬时值
+      description: 返回本机实时的 CPU、内存、磁盘使用率及当前告警数（通过 gopsutil 采集）
       tags:
         - Dashboard
       responses:
@@ -32,7 +32,7 @@ paths:
     get:
       operationId: getDashboardTrend
       summary: 获取仪表盘趋势数据
-      description: 返回最近 6 小时的 CPU 和内存使用率时序数据
+      description: 返回最近 N 小时内本机 CPU 和内存使用率的时序数据（后端定时采集）
       tags:
         - Dashboard
       parameters:
@@ -212,6 +212,89 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DeploymentHistoryItem'
+
+  /api/monitor/processes:
+    get:
+      operationId: getProcessList
+      summary: 获取本机进程列表
+      description: 返回当前运行中的进程列表，支持按 CPU/内存排序和进程名搜索
+      tags:
+        - Monitor
+      parameters:
+        - name: sortBy
+          in: query
+          description: 排序字段
+          schema:
+            type: string
+            enum: [cpu, memory, pid, name]
+            default: cpu
+        - name: order
+          in: query
+          description: 排序方向
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: keyword
+          in: query
+          description: 进程名关键词模糊搜索
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: 返回条数上限（类似 top -n）
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        '200':
+          description: 成功返回进程列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProcessItem'
+
+  /api/monitor/processes/{pid}:
+    get:
+      operationId: getProcessDetail
+      summary: 获取进程详情
+      description: 根据 PID 获取单个进程的详细资源占用和状态
+      tags:
+        - Monitor
+      parameters:
+        - name: pid
+          in: path
+          required: true
+          description: 进程 ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功返回进程详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessDetail'
+        '404':
+          description: 进程不存在或已退出
+
+  /api/monitor/host:
+    get:
+      operationId: getHostInfo
+      summary: 获取主机信息
+      description: 返回本机的操作系统、CPU、内存、启动时间等硬件信息
+      tags:
+        - Monitor
+      responses:
+        '200':
+          description: 成功返回主机信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostInfo'
 
 components:
   schemas:
@@ -451,3 +534,131 @@ components:
         deployedAt:
           type: string
           format: date-time
+
+    # ---------- Monitor ----------
+    ProcessItem:
+      type: object
+      required: [pid, name, cpuPercent, memoryPercent, memoryMb, status]
+      properties:
+        pid:
+          type: integer
+          description: 进程 ID
+          example: 1428
+        name:
+          type: string
+          description: 进程名
+          example: "devops-api"
+        cmdline:
+          type: string
+          description: 启动命令行
+          example: "./devops-api"
+        cpuPercent:
+          type: number
+          description: CPU 使用率 (%)
+          example: 12.5
+        memoryPercent:
+          type: number
+          description: 内存占用率 (%)
+          example: 3.2
+        memoryMb:
+          type: number
+          description: 占用内存大小 (MB)
+          example: 256.0
+        status:
+          type: string
+          description: 进程状态
+          example: "running"
+
+    ProcessDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProcessItem'
+        - type: object
+          required: [ppid, numThreads, numOpenFiles, numConnections, createTime, username]
+          properties:
+            ppid:
+              type: integer
+              description: 父进程 ID
+              example: 1
+            numThreads:
+              type: integer
+              description: 线程数
+              example: 8
+            numOpenFiles:
+              type: integer
+              description: 打开的文件描述符数量
+              example: 24
+            numConnections:
+              type: integer
+              description: 网络连接数
+              example: 5
+            createTime:
+              type: string
+              format: date-time
+              description: 进程启动时间
+            username:
+              type: string
+              description: 运行该进程的用户
+              example: "apple"
+            workingDir:
+              type: string
+              description: 工作目录
+              example: "/Users/apple/devops-dashboard/backend"
+            env:
+              type: array
+              items:
+                type: string
+              description: 环境变量列表（脱敏后可返回）
+              example: ["PATH=/usr/bin", "HOME=/Users/apple"]
+
+    HostInfo:
+      type: object
+      required: [hostname, os, platform, platformVersion, kernelVersion, arch, bootTime, uptime, cpuModel, cpuCores, totalMemoryGb]
+      properties:
+        hostname:
+          type: string
+          example: "MacBook-Pro"
+        os:
+          type: string
+          description: 操作系统类型
+          example: "darwin"
+        platform:
+          type: string
+          description: 平台名称
+          example: "macOS"
+        platformVersion:
+          type: string
+          example: "15.3.1"
+        kernelVersion:
+          type: string
+          example: "24.3.0"
+        arch:
+          type: string
+          description: 架构
+          example: "arm64"
+        bootTime:
+          type: string
+          format: date-time
+          description: 系统启动时间
+        uptime:
+          type: string
+          description: 运行时长，人工可读格式
+          example: "3d 12h 45m"
+        cpuModel:
+          type: string
+          example: "Apple M3 Pro"
+        cpuCores:
+          type: integer
+          description: 物理核心数
+          example: 11
+        cpuLogicalCores:
+          type: integer
+          description: 逻辑核心数
+          example: 11
+        totalMemoryGb:
+          type: number
+          description: 总内存 (GB)
+          example: 36.0
+        virtualMemoryGb:
+          type: number
+          description: 虚拟内存 / 交换分区总量 (GB)
+          example: 4.0
