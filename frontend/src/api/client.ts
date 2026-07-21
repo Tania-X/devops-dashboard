@@ -15,6 +15,7 @@ import type {
   GetDashboardAlertsParams,
   GetDashboardTrendParams,
   GetLogListParams,
+  GetProcessListParams,
   GetServerListParams
 } from './model';
 
@@ -37,14 +38,17 @@ import type {
   DashboardTrend,
   DeploymentHistoryItem,
   DeploymentItem,
+  HostInfo,
   PagedResultLogItem,
   PagedResultServerItem,
+  ProcessDetail,
+  ProcessItem,
   ServerDetail
 } from './model';
 
 export const getDevOpsDashboardAPI = () => {
 /**
- * 返回 CPU、内存、磁盘、告警数的当前瞬时值
+ * 返回本机实时的 CPU、内存、磁盘使用率及当前告警数（通过 gopsutil 采集）
  * @summary 获取仪表盘当前核心指标
  */
 const getDashboardMetrics = <TData = AxiosResponse<DashboardMetrics>>(
@@ -56,7 +60,7 @@ const getDashboardMetrics = <TData = AxiosResponse<DashboardMetrics>>(
   }
 
 /**
- * 返回最近 6 小时的 CPU 和内存使用率时序数据
+ * 返回最近 N 小时内本机 CPU 和内存使用率的时序数据（后端定时采集）
  * @summary 获取仪表盘趋势数据
  */
 const getDashboardTrend = <TData = AxiosResponse<DashboardTrend>>(
@@ -147,7 +151,45 @@ const getDeploymentHistory = <TData = AxiosResponse<DeploymentHistoryItem[]>>(
     );
   }
 
-return {getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory}};
+/**
+ * 返回当前运行中的进程列表，支持按 CPU/内存排序和进程名搜索
+ * @summary 获取本机进程列表
+ */
+const getProcessList = <TData = AxiosResponse<ProcessItem[]>>(
+    params?: GetProcessListParams, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/monitor/processes`,{
+    ...options,
+        params: {...params, ...options?.params},}
+    );
+  }
+
+/**
+ * 根据 PID 获取单个进程的详细资源占用和状态
+ * @summary 获取进程详情
+ */
+const getProcessDetail = <TData = AxiosResponse<ProcessDetail>>(
+    pid: number, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/monitor/processes/${pid}`,options
+    );
+  }
+
+/**
+ * 返回本机的操作系统、CPU、内存、启动时间等硬件信息
+ * @summary 获取主机信息
+ */
+const getHostInfo = <TData = AxiosResponse<HostInfo>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/monitor/host`,options
+    );
+  }
+
+return {getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo}};
 export type GetDashboardMetricsResult = AxiosResponse<DashboardMetrics>
 export type GetDashboardTrendResult = AxiosResponse<DashboardTrend>
 export type GetDashboardAlertsResult = AxiosResponse<AlertItem[]>
@@ -156,6 +198,9 @@ export type GetServerDetailResult = AxiosResponse<ServerDetail>
 export type GetLogListResult = AxiosResponse<PagedResultLogItem>
 export type GetDeploymentListResult = AxiosResponse<DeploymentItem[]>
 export type GetDeploymentHistoryResult = AxiosResponse<DeploymentHistoryItem[]>
+export type GetProcessListResult = AxiosResponse<ProcessItem[]>
+export type GetProcessDetailResult = AxiosResponse<ProcessDetail>
+export type GetHostInfoResult = AxiosResponse<HostInfo>
 
 
 export const getGetDashboardMetricsResponseMock = (overrideResponse: Partial< DashboardMetrics > = {}): DashboardMetrics => ({cpu: {current: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.helpers.arrayElement(['normal','warning','critical'] as const)}, memory: {current: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.helpers.arrayElement(['normal','warning','critical'] as const)}, disk: {current: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.helpers.arrayElement(['normal','warning','critical'] as const)}, alertCount: faker.number.int({min: undefined, max: undefined}), ...overrideResponse})
@@ -173,6 +218,12 @@ export const getGetLogListResponseMock = (overrideResponse: Partial< PagedResult
 export const getGetDeploymentListResponseMock = (): DeploymentItem[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), appName: faker.string.alpha({length: {min: 10, max: 20}}), version: faker.string.alpha({length: {min: 10, max: 20}}), env: faker.helpers.arrayElement(['dev','test','prod'] as const), status: faker.helpers.arrayElement(['pending','deploying','success','failed'] as const), lastDeployedAt: `${faker.date.past().toISOString().split('.')[0]}Z`})))
 
 export const getGetDeploymentHistoryResponseMock = (): DeploymentHistoryItem[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({version: faker.string.alpha({length: {min: 10, max: 20}}), operator: faker.string.alpha({length: {min: 10, max: 20}}), durationSec: faker.number.int({min: undefined, max: undefined}), status: faker.helpers.arrayElement(['success','failed'] as const), deployedAt: `${faker.date.past().toISOString().split('.')[0]}Z`})))
+
+export const getGetProcessListResponseMock = (): ProcessItem[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({pid: faker.number.int({min: undefined, max: undefined}), name: faker.string.alpha({length: {min: 10, max: 20}}), cmdline: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), cpuPercent: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), memoryPercent: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), memoryMb: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.string.alpha({length: {min: 10, max: 20}})})))
+
+export const getGetProcessDetailResponseMock = (): ProcessDetail => ({...{pid: faker.number.int({min: undefined, max: undefined}), name: faker.string.alpha({length: {min: 10, max: 20}}), cmdline: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), cpuPercent: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), memoryPercent: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), memoryMb: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.string.alpha({length: {min: 10, max: 20}})},...{ppid: faker.number.int({min: undefined, max: undefined}), numThreads: faker.number.int({min: undefined, max: undefined}), numOpenFiles: faker.number.int({min: undefined, max: undefined}), numConnections: faker.number.int({min: undefined, max: undefined}), createTime: `${faker.date.past().toISOString().split('.')[0]}Z`, username: faker.string.alpha({length: {min: 10, max: 20}}), workingDir: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), env: faker.helpers.arrayElement([Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined])},})
+
+export const getGetHostInfoResponseMock = (overrideResponse: Partial< HostInfo > = {}): HostInfo => ({hostname: faker.string.alpha({length: {min: 10, max: 20}}), os: faker.string.alpha({length: {min: 10, max: 20}}), platform: faker.string.alpha({length: {min: 10, max: 20}}), platformVersion: faker.string.alpha({length: {min: 10, max: 20}}), kernelVersion: faker.string.alpha({length: {min: 10, max: 20}}), arch: faker.string.alpha({length: {min: 10, max: 20}}), bootTime: `${faker.date.past().toISOString().split('.')[0]}Z`, uptime: faker.string.alpha({length: {min: 10, max: 20}}), cpuModel: faker.string.alpha({length: {min: 10, max: 20}}), cpuCores: faker.number.int({min: undefined, max: undefined}), cpuLogicalCores: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), totalMemoryGb: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), virtualMemoryGb: faker.helpers.arrayElement([faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), undefined]), ...overrideResponse})
 
 
 export const getGetDashboardMetricsMockHandler = (overrideResponse?: DashboardMetrics | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DashboardMetrics> | DashboardMetrics), options?: RequestHandlerOptions) => {
@@ -270,6 +321,42 @@ export const getGetDeploymentHistoryMockHandler = (overrideResponse?: Deployment
       })
   }, options)
 }
+
+export const getGetProcessListMockHandler = (overrideResponse?: ProcessItem[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ProcessItem[]> | ProcessItem[]), options?: RequestHandlerOptions) => {
+  return http.get('*/api/monitor/processes', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetProcessListResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getGetProcessDetailMockHandler = (overrideResponse?: ProcessDetail | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ProcessDetail> | ProcessDetail), options?: RequestHandlerOptions) => {
+  return http.get('*/api/monitor/processes/:pid', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetProcessDetailResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getGetHostInfoMockHandler = (overrideResponse?: HostInfo | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<HostInfo> | HostInfo), options?: RequestHandlerOptions) => {
+  return http.get('*/api/monitor/host', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetHostInfoResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
 export const getDevOpsDashboardAPIMock = () => [
   getGetDashboardMetricsMockHandler(),
   getGetDashboardTrendMockHandler(),
@@ -278,4 +365,7 @@ export const getDevOpsDashboardAPIMock = () => [
   getGetServerDetailMockHandler(),
   getGetLogListMockHandler(),
   getGetDeploymentListMockHandler(),
-  getGetDeploymentHistoryMockHandler()]
+  getGetDeploymentHistoryMockHandler(),
+  getGetProcessListMockHandler(),
+  getGetProcessDetailMockHandler(),
+  getGetHostInfoMockHandler()]
