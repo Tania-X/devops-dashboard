@@ -35,9 +35,9 @@ func Collect() (*MetricSnapshot, error) {
 	}
 
 	return &MetricSnapshot{
-		CPUPercent:    round(cpuPercent[0]),
-		MemoryPercent: round(memInfo.UsedPercent),
-		DiskPercent:   round(diskInfo.UsedPercent),
+		CPUPercent:    Round(cpuPercent[0]),
+		MemoryPercent: Round(memInfo.UsedPercent),
+		DiskPercent:   Round(diskInfo.UsedPercent),
 	}, nil
 }
 
@@ -51,6 +51,6 @@ func Status(percent float64) string {
 	return "critical"
 }
 
-func round(v float64) float64 {
+func Round(v float64) float64 {
 	return math.Round(v*10) / 10
 }

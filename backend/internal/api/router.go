@@ -24,6 +24,9 @@ func SetupRouter() *gin.Engine {
 		api.GET("/logs", GetLogList)
 		api.GET("/deployments", GetDeploymentList)
 		api.GET("/deployments/:id/history", GetDeploymentHistory)
+		api.GET("/monitor/processes", GetProcessList)
+		api.GET("/monitor/processes/:pid", GetProcessDetail)
+		api.GET("/monitor/host", GetHostInfo)
 	}
 
 	return r

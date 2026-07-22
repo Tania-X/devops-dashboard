@@ -6,15 +6,28 @@ import (
 	"time"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
 	"github.com/gin-gonic/gin"
 )
 
 func GetDashboardMetrics(c *gin.Context) {
+	snapshot, err := monitor.Collect()
+	if err != nil {
+		// 采集失败时回退到假数据，保证前端不白屏
+		c.JSON(http.StatusOK, model.DashboardMetrics{
+			CPU:        model.MetricValue{Current: 0, Status: "normal"},
+			Memory:     model.MetricValue{Current: 0, Status: "normal"},
+			Disk:       model.MetricValue{Current: 0, Status: "normal"},
+			AlertCount: 0,
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, model.DashboardMetrics{
-		CPU:        model.MetricValue{Current: 67.5, Status: "warning"},
-		Memory:     model.MetricValue{Current: 54.2, Status: "normal"},
-		Disk:       model.MetricValue{Current: 78.0, Status: "warning"},
-		AlertCount: 3,
+		CPU:        model.MetricValue{Current: snapshot.CPUPercent, Status: monitor.Status(snapshot.CPUPercent)},
+		Memory:     model.MetricValue{Current: snapshot.MemoryPercent, Status: monitor.Status(snapshot.MemoryPercent)},
+		Disk:       model.MetricValue{Current: snapshot.DiskPercent, Status: monitor.Status(snapshot.DiskPercent)},
+		AlertCount: 0, // 告警数暂未接入真实数据源
 	})
 }
 
@@ -24,20 +37,19 @@ func GetDashboardTrend(c *gin.Context) {
 		hours = 6
 	}
 
-	now := time.Now()
-	timeLabels := make([]string, hours)
-	cpuData := make([]float64, hours)
-	memoryData := make([]float64, hours)
-
-	for i := 0; i < hours; i++ {
-		t := now.Add(-time.Duration(hours-1-i) * time.Hour)
-		timeLabels[i] = t.Format("01-02 15:04")
-		cpuData[i] = 40 + float64(i)*3 + float64(i%3)*2
-		memoryData[i] = 50 + float64(i)*2 + float64(i%2)*3
+	// 如果 history 未初始化，返回空数据
+	if trendHistory == nil {
+		c.JSON(http.StatusOK, model.DashboardTrend{
+			TimeLabels: []string{},
+			CpuData:    []float64{},
+			MemoryData: []float64{},
+		})
+		return
 	}
 
+	labels, cpuData, memoryData := trendHistory.Query(hours)
 	c.JSON(http.StatusOK, model.DashboardTrend{
-		TimeLabels: timeLabels,
+		TimeLabels: labels,
 		CpuData:    cpuData,
 		MemoryData: memoryData,
 	})
