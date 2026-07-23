@@ -12,11 +12,13 @@ type HistoryPoint struct {
 	MemoryPercent float64
 }
 
-// History 线程安全的历史数据缓存（内存存储）
+// History 线程安全的历史数据缓存（固定大小环形缓冲）
 type History struct {
-	mu      sync.RWMutex
-	points  []HistoryPoint
-	maxSize int
+	mu       sync.RWMutex
+	data     []HistoryPoint // 固定长度 maxSize，预分配
+	writePos int            // 下一个写入位置
+	count    int            // 当前有效元素数（0..maxSize）
+	maxSize  int
 }
 
 // NewHistory 创建历史记录器
@@ -29,7 +31,7 @@ func NewHistory(retain, interval time.Duration) *History {
 		maxSize = 1
 	}
 	return &History{
-		points:  make([]HistoryPoint, 0, maxSize),
+		data:    make([]HistoryPoint, maxSize), // len=maxSize, cap=maxSize
 		maxSize: maxSize,
 	}
 }
@@ -40,11 +42,11 @@ func (h *History) Record(p HistoryPoint) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	// 超出容量时淘汰最旧的数据（队头）
-	if len(h.points) >= h.maxSize {
-		h.points = h.points[1:]
+	h.data[h.writePos] = p
+	h.writePos = (h.writePos + 1) % h.maxSize
+	if h.count < h.maxSize {
+		h.count++
 	}
-	h.points = append(h.points, p)
 }
 
 // Query 查询最近 hours 小时的数据
@@ -53,9 +55,17 @@ func (h *History) Query(hours int) (labels []string, cpu []float64, memory []flo
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	cutoff := time.Now().Add(-time.Duration(hours) * time.Hour)
+	if h.count == 0 {
+		return
+	}
 
-	for _, p := range h.points {
+	cutoff := time.Now().Add(-time.Duration(hours) * time.Hour)
+	// 最旧有效数据的起始下标，+maxSize 是为了避免 writePos-count 为负数
+	start := (h.writePos - h.count + h.maxSize) % h.maxSize
+
+	for i := 0; i < h.count; i++ {
+		idx := (start + i) % h.maxSize
+		p := h.data[idx]
 		if p.Timestamp.Before(cutoff) {
 			continue
 		}
