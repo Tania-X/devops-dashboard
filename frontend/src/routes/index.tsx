@@ -4,6 +4,7 @@ import DashboardPage from '../features/dashboard/DashboardPage';
 import ServerListPage from '../features/server/ServerListPage';
 import LogQueryPage from '../features/log/LogQueryPage';
 import DeploymentPage from '../features/deployment/DeploymentPage';
+import MonitorPage from '../features/monitor/MonitorPage';
 
 export default function AppRoutes() {
   return (
@@ -13,6 +14,7 @@ export default function AppRoutes() {
         <Route path="servers" element={<ServerListPage />} />
         <Route path="logs" element={<LogQueryPage />} />
         <Route path="deployments" element={<DeploymentPage />} />
+        <Route path="monitor" element={<MonitorPage />} />
       </Route>
     </Routes>
   );

@@ -8,6 +8,7 @@ const breadcrumbMap: Record<string, string> = {
   '/servers': '服务器管理',
   '/logs': '日志查询',
   '/deployments': '部署状态',
+  '/monitor': '实时监控',
 };
 
 export default function AppHeader() {

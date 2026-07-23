@@ -4,6 +4,7 @@ import {
   CloudServerOutlined,
   FileTextOutlined,
   RocketOutlined,
+  FundOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -29,6 +30,11 @@ const menuItems = [
     key: '/deployments',
     icon: <RocketOutlined />,
     label: '部署状态',
+  },
+  {
+    key: '/monitor',
+    icon: <FundOutlined />,
+    label: '实时监控',
   },
 ];
 
