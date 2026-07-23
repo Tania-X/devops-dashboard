@@ -31,23 +31,31 @@ export default function StatPanel({ config }: StatPanelProps) {
 
   useEffect(() => {
     const api = getDevOpsDashboardAPI();
-    let promise;
+    let cancelled = false;
 
-    switch (config.api) {
-      case 'getDashboardMetrics':
-        promise = api.getDashboardMetrics();
-        break;
-      default:
-        setLoading(false);
-        return;
-    }
+    const fetchData = () => {
+      api.getDashboardMetrics()
+        .then((res) => {
+          if (cancelled) return;
+          const raw = getValueByPath(res.data, config.dataKey);
+          setValue(typeof raw === 'number' ? raw : Number(raw) || 0);
+        })
+        .catch((err) => {
+          console.error('[StatPanel] API 请求失败:', err);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
 
-    promise
-      .then((res) => {
-        const raw = getValueByPath(res.data, config.dataKey);
-        setValue(typeof raw === 'number' ? raw : Number(raw) || 0);
-      })
-      .finally(() => setLoading(false));
+    fetchData();
+
+    const interval = setInterval(fetchData, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [config.api, config.dataKey]);
 
   const IconComponent = (icons as unknown as Record<string, React.ComponentType<any>>)[config.icon];

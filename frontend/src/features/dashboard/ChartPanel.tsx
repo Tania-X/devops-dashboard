@@ -77,6 +77,7 @@ export default function ChartPanel({ config }: ChartPanelProps) {
               backgroundColor: 'rgba(0,0,0,0.8)',
               borderColor: '#333',
               textStyle: { color: '#ffffff' },
+              valueFormatter: (value: number) => Number(value).toFixed(1) + '%',
             },
             legend: {
               data: config.series.map((s) => s.name),
@@ -103,7 +104,7 @@ export default function ChartPanel({ config }: ChartPanelProps) {
               min: 0,
               max: 100,
               axisLine: { lineStyle: { color: '#333' } },
-              axisLabel: { color: '#aaaaaa', fontSize: 11, formatter: '{value}%' },
+              axisLabel: { color: '#aaaaaa', fontSize: 11, formatter: (v: number) => v.toFixed(1) + '%' },
               splitLine: { lineStyle: { color: '#333', type: 'dashed' } },
             },
             series: config.series.map((s) => {
@@ -133,6 +134,8 @@ export default function ChartPanel({ config }: ChartPanelProps) {
         })
         .finally(() => {
           setLoading(false);
+          // loading 遮罩移除后重新计算图表尺寸
+          requestAnimationFrame(() => chartInstance.current?.resize());
         });
     };
 
@@ -141,12 +144,17 @@ export default function ChartPanel({ config }: ChartPanelProps) {
     // 自动刷新：每 15 秒重新拉取数据
     const interval = setInterval(fetchAndRender, 15000);
 
-    const handleResize = () => chartInstance.current?.resize();
-    window.addEventListener('resize', handleResize);
+    // 使用 ResizeObserver 精确监听容器尺寸变化
+    const observer = new ResizeObserver(() => {
+      chartInstance.current?.resize();
+    });
+    if (chartRef.current) {
+      observer.observe(chartRef.current.parentElement!);
+    }
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('resize', handleResize);
+      observer.disconnect();
       chartInstance.current?.dispose();
     };
   }, [config]);
@@ -166,7 +174,7 @@ export default function ChartPanel({ config }: ChartPanelProps) {
         fontWeight: 500,
       }}
     >
-      <div style={{ height: config.height, position: 'relative' }}>
+      <div style={{ height: config.height, position: 'relative', overflow: 'hidden' }}>
         {/* echarts 独占一个容器，React 不管理其内部 DOM */}
         <div ref={chartRef} style={{ height: '100%', width: '100%' }} />
 
