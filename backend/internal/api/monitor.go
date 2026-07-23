@@ -16,16 +16,8 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 )
 
-// trendHistory 是全局的历史数据缓存，由 main.go 初始化并启动采集
-var trendHistory *monitor.History
-
-// InitMonitorHistory 初始化历史缓存并启动后台采集
-func InitMonitorHistory(h *monitor.History) {
-	trendHistory = h
-}
-
 // GetProcessList 获取本机进程列表
-func GetProcessList(c *gin.Context) {
+func (h *Handler) GetProcessList(c *gin.Context) {
 	sortBy := c.DefaultQuery("sortBy", "cpu")
 	order := c.DefaultQuery("order", "desc")
 	keyword := strings.ToLower(c.DefaultQuery("keyword", ""))
@@ -101,7 +93,7 @@ func GetProcessList(c *gin.Context) {
 }
 
 // GetProcessDetail 获取单个进程详情
-func GetProcessDetail(c *gin.Context) {
+func (h *Handler) GetProcessDetail(c *gin.Context) {
 	pid, err := strconv.Atoi(c.Param("pid"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 PID"})
@@ -161,7 +153,7 @@ func GetProcessDetail(c *gin.Context) {
 }
 
 // GetHostInfo 获取主机信息
-func GetHostInfo(c *gin.Context) {
+func (h *Handler) GetHostInfo(c *gin.Context) {
 	info, err := host.Info()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取主机信息失败"})

@@ -5,11 +5,10 @@ import (
 	"strconv"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
-	"github.com/Tania-X/devops-dashboard/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 )
 
-func GetServerList(c *gin.Context) {
+func (h *Handler) GetServerList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
 	status := c.Query("status")
@@ -24,7 +23,7 @@ func GetServerList(c *gin.Context) {
 	var servers []model.Server
 	var total int64
 
-	query := repository.DB.Model(&model.Server{})
+	query := h.db.Model(&model.Server{})
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -40,11 +39,11 @@ func GetServerList(c *gin.Context) {
 	})
 }
 
-func GetServerDetail(c *gin.Context) {
+func (h *Handler) GetServerDetail(c *gin.Context) {
 	id := c.Param("id")
 
 	var server model.Server
-	result := repository.DB.Preload("DiskPartitions").Preload("NetworkInterfaces").First(&server, "id = ?", id)
+	result := h.db.Preload("DiskPartitions").Preload("NetworkInterfaces").First(&server, "id = ?", id)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "server not found"})
 		return

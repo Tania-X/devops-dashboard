@@ -5,11 +5,10 @@ import (
 	"strconv"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
-	"github.com/Tania-X/devops-dashboard/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 )
 
-func GetLogList(c *gin.Context) {
+func (h *Handler) GetLogList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
 	level := c.Query("level")
@@ -26,7 +25,7 @@ func GetLogList(c *gin.Context) {
 	var logs []model.Log
 	var total int64
 
-	query := repository.DB.Model(&model.Log{})
+	query := h.db.Model(&model.Log{})
 	if level != "" {
 		query = query.Where("level = ?", level)
 	}

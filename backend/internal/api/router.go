@@ -4,11 +4,29 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"log/slog"
 )
 
-func SetupRouter() *gin.Engine {
+// Handler 聚合所有 handler 所需的依赖
+// 通过 NewHandler 注入，避免使用全局变量
+type Handler struct {
+	db      *gorm.DB
+	history *monitor.History
+}
+
+// NewHandler 创建 Handler 实例
+func NewHandler(db *gorm.DB, history *monitor.History) *Handler {
+	return &Handler{
+		db:      db,
+		history: history,
+	}
+}
+
+// SetupRouter 配置并返回 Gin 路由引擎
+func (h *Handler) SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(corsMiddleware())
@@ -16,17 +34,17 @@ func SetupRouter() *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		api.GET("/servers", GetServerList)
-		api.GET("/servers/:id", GetServerDetail)
-		api.GET("/dashboard/metrics", GetDashboardMetrics)
-		api.GET("/dashboard/trend", GetDashboardTrend)
-		api.GET("/dashboard/alerts", GetDashboardAlerts)
-		api.GET("/logs", GetLogList)
-		api.GET("/deployments", GetDeploymentList)
-		api.GET("/deployments/:id/history", GetDeploymentHistory)
-		api.GET("/monitor/processes", GetProcessList)
-		api.GET("/monitor/processes/:pid", GetProcessDetail)
-		api.GET("/monitor/host", GetHostInfo)
+		api.GET("/servers", h.GetServerList)
+		api.GET("/servers/:id", h.GetServerDetail)
+		api.GET("/dashboard/metrics", h.GetDashboardMetrics)
+		api.GET("/dashboard/trend", h.GetDashboardTrend)
+		api.GET("/dashboard/alerts", h.GetDashboardAlerts)
+		api.GET("/logs", h.GetLogList)
+		api.GET("/deployments", h.GetDeploymentList)
+		api.GET("/deployments/:id/history", h.GetDeploymentHistory)
+		api.GET("/monitor/processes", h.GetProcessList)
+		api.GET("/monitor/processes/:pid", h.GetProcessDetail)
+		api.GET("/monitor/host", h.GetHostInfo)
 	}
 
 	return r

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetDashboardMetrics(c *gin.Context) {
+func (h *Handler) GetDashboardMetrics(c *gin.Context) {
 	snapshot, err := monitor.Collect()
 	if err != nil {
 		// 采集失败时回退到假数据，保证前端不白屏
@@ -31,14 +31,14 @@ func GetDashboardMetrics(c *gin.Context) {
 	})
 }
 
-func GetDashboardTrend(c *gin.Context) {
+func (h *Handler) GetDashboardTrend(c *gin.Context) {
 	hours, _ := strconv.Atoi(c.DefaultQuery("hours", "6"))
 	if hours < 1 || hours > 24 {
 		hours = 6
 	}
 
 	// 如果 history 未初始化，返回空数据
-	if trendHistory == nil {
+	if h.history == nil {
 		c.JSON(http.StatusOK, model.DashboardTrend{
 			TimeLabels: []string{},
 			CpuData:    []float64{},
@@ -47,7 +47,7 @@ func GetDashboardTrend(c *gin.Context) {
 		return
 	}
 
-	labels, cpuData, memoryData := trendHistory.Query(hours)
+	labels, cpuData, memoryData := h.history.Query(hours)
 	c.JSON(http.StatusOK, model.DashboardTrend{
 		TimeLabels: labels,
 		CpuData:    cpuData,
@@ -55,7 +55,7 @@ func GetDashboardTrend(c *gin.Context) {
 	})
 }
 
-func GetDashboardAlerts(c *gin.Context) {
+func (h *Handler) GetDashboardAlerts(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "5"))
 	if limit > 20 {
 		limit = 20
