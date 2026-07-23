@@ -114,6 +114,8 @@ func (a *App) shutdown() error {
 }
 
 // setupLogger 根据配置初始化 slog
+//
+//	text 格式便于本地开发调试阅读；json 格式便于接入 Loki 等日志系统
 func (a *App) setupLogger() {
 	level := slog.LevelInfo
 	switch a.cfg.LogLevel {
@@ -125,7 +127,30 @@ func (a *App) setupLogger() {
 		level = slog.LevelError
 	}
 
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
-	})))
+	opts := &slog.HandlerOptions{Level: level}
+
+	// 全局字段：每条日志都会带上，用于区分服务、环境、进程
+	version := os.Getenv("VERSION")
+	if version == "" {
+		version = "dev"
+	}
+	attrs := []slog.Attr{
+		slog.String("service", "devops-dashboard"),
+		slog.String("env", a.cfg.Env),
+		slog.String("version", version),
+		slog.Int("pid", os.Getpid()),
+	}
+	if hostname, err := os.Hostname(); err == nil && hostname != "" {
+		attrs = append(attrs, slog.String("hostname", hostname))
+	}
+
+	var handler slog.Handler
+	switch a.cfg.LogFormat {
+	case "json":
+		handler = slog.NewJSONHandler(os.Stdout, opts).WithAttrs(attrs)
+	default:
+		handler = slog.NewTextHandler(os.Stdout, opts).WithAttrs(attrs)
+	}
+
+	slog.SetDefault(slog.New(handler))
 }
