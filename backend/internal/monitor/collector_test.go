@@ -59,7 +59,7 @@ func TestCollect(t *testing.T) {
 		snapshot.CPUPercent, snapshot.MemoryPercent, snapshot.DiskPercent)
 }
 
-// TestRound 测试私有辅助函数 round
+// TestRound 测试辅助函数 Round
 // 白盒测试的优势：可以验证内部实现的边界行为
 func TestRound(t *testing.T) {
 	cases := []struct {
@@ -73,9 +73,9 @@ func TestRound(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run("", func(t *testing.T) {
-			got := round(c.input)
+			got := Round(c.input)
 			if got != c.want {
-				t.Errorf("round(%.2f) = %.1f, want %.1f", c.input, got, c.want)
+				t.Errorf("Round(%.2f) = %.1f, want %.1f", c.input, got, c.want)
 			}
 		})
 	}
