@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"time"
 
+	"log/slog"
+
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"log/slog"
 )
 
 // Handler 聚合所有 handler 所需的依赖
@@ -45,6 +46,7 @@ func (h *Handler) SetupRouter() *gin.Engine {
 		api.GET("/monitor/processes", h.GetProcessList)
 		api.GET("/monitor/processes/:pid", h.GetProcessDetail)
 		api.GET("/monitor/host", h.GetHostInfo)
+		api.GET("/health", h.HealthCheck)
 	}
 
 	return r
