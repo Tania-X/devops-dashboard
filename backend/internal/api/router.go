@@ -29,7 +29,7 @@ func NewHandler(db *gorm.DB, history *monitor.History) *Handler {
 // SetupRouter 配置并返回 Gin 路由引擎
 func (h *Handler) SetupRouter() *gin.Engine {
 	r := gin.New()
-	r.Use(gin.Recovery())
+	r.Use(RecoveryMiddleware())
 	r.Use(corsMiddleware())
 	r.Use(requestLogger())
 
@@ -48,6 +48,9 @@ func (h *Handler) SetupRouter() *gin.Engine {
 		api.GET("/monitor/host", h.GetHostInfo)
 		api.GET("/health", h.HealthCheck)
 	}
+	r.NoRoute(func(c *gin.Context) {
+		ErrorJSON(c, http.StatusNotFound, "resource not exist")
+	})
 
 	return r
 }
