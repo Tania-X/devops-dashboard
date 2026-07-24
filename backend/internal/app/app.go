@@ -15,6 +15,7 @@ import (
 	"github.com/Tania-X/devops-dashboard/backend/internal/config"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
 	"github.com/Tania-X/devops-dashboard/backend/internal/repository"
+	"github.com/Tania-X/devops-dashboard/backend/internal/service"
 	"github.com/Tania-X/devops-dashboard/backend/pkg/seed"
 	"gorm.io/gorm"
 )
@@ -22,11 +23,13 @@ import (
 // App 聚合应用生命周期所需的所有依赖
 // 负责初始化、启动、优雅关闭
 type App struct {
-	cfg     config.Config
-	db      *gorm.DB
-	history *monitor.History
-	server  *http.Server
-	stopCh  chan struct{}
+	cfg      config.Config
+	db       *gorm.DB
+	history  *monitor.History
+	services *service.Services
+
+	server *http.Server
+	stopCh chan struct{}
 }
 
 // New 创建 App 实例（此时还未初始化任何依赖）
@@ -61,7 +64,7 @@ func (a *App) Init() error {
 	a.history = monitor.NewHistory(retain, interval)
 	a.stopCh = a.history.StartCollector(interval)
 
-	handler := api.NewHandler(a.db, a.history)
+	handler := api.NewHandler(a.db, a.history, a.services)
 	a.server = &http.Server{
 		Addr:    ":" + a.cfg.Port,
 		Handler: handler.SetupRouter(),

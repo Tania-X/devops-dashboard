@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
+	"github.com/Tania-X/devops-dashboard/backend/internal/service"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -14,15 +15,17 @@ import (
 // Handler 聚合所有 handler 所需的依赖
 // 通过 NewHandler 注入，避免使用全局变量
 type Handler struct {
-	db      *gorm.DB
-	history *monitor.History
+	db       *gorm.DB
+	history  *monitor.History
+	services *service.Services
 }
 
 // NewHandler 创建 Handler 实例
-func NewHandler(db *gorm.DB, history *monitor.History) *Handler {
+func NewHandler(db *gorm.DB, history *monitor.History, services *service.Services) *Handler {
 	return &Handler{
-		db:      db,
-		history: history,
+		db:       db,
+		history:  history,
+		services: services,
 	}
 }
 

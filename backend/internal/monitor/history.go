@@ -22,8 +22,10 @@ type History struct {
 }
 
 // NewHistory 创建历史记录器
-//   retain: 保留多长时间的数据（如 24h）
-//   interval: 采样间隔（如 10s）
+//
+//	retain: 保留多长时间的数据（如 24h）
+//	interval: 采样间隔（如 10s）
+//
 // 根据两者计算出最多存储多少个点
 func NewHistory(retain, interval time.Duration) *History {
 	maxSize := int(retain / interval)
