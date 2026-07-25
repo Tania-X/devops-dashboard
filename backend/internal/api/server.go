@@ -20,16 +20,11 @@ func (h *Handler) GetServerList(c *gin.Context) {
 		pageSize = 10
 	}
 
-	var servers []model.Server
-	var total int64
-
-	query := h.db.Model(&model.Server{})
-	if status != "" {
-		query = query.Where("status = ?", status)
+	servers, total, err := h.services.ServerService.List(page, pageSize, status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-
-	query.Count(&total)
-	query.Order("CASE status WHEN 'running' THEN 1 WHEN 'maintenance' THEN 2 WHEN 'stopped' THEN 3 END, id ASC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&servers)
 
 	c.JSON(http.StatusOK, model.PagedResultServerItem{
 		List:     servers,
@@ -42,9 +37,8 @@ func (h *Handler) GetServerList(c *gin.Context) {
 func (h *Handler) GetServerDetail(c *gin.Context) {
 	id := c.Param("id")
 
-	var server model.Server
-	result := h.db.Preload("DiskPartitions").Preload("NetworkInterfaces").First(&server, "id = ?", id)
-	if result.Error != nil {
+	server, err := h.services.ServerService.GetByID(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "server not found"})
 		return
 	}
