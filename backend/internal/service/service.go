@@ -11,6 +11,7 @@ type Services struct {
 	DeploymentService *DeploymentService
 	LogService        *LogService
 	DashboardService  *DashboardService
+	MonitorService    *MonitorService
 }
 
 func NewServices(db *gorm.DB, history *monitor.History) *Services {
@@ -19,5 +20,6 @@ func NewServices(db *gorm.DB, history *monitor.History) *Services {
 		DeploymentService: NewDeploymentService(db),
 		LogService:        NewLogService(db),
 		DashboardService:  NewDashboardService(db, history),
+		MonitorService:    NewMonitorService(db),
 	}
 }
