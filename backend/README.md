@@ -92,12 +92,20 @@ backend/
 │   │   ├── deployment.go
 │   │   ├── dashboard.go
 │   │   └── monitor.go
+│   ├── service/
+│   │   ├── service.go       # Services 聚合 + NewServices 构造函数
+│   │   ├── server.go        # ServerService
+│   │   ├── deployment.go    # DeploymentService
+│   │   ├── log.go           # LogService
+│   │   ├── dashboard.go     # DashboardService
+│   │   └── monitor.go       # MonitorService
 │   ├── monitor/
 │   │   ├── collector.go     # gopsutil 系统指标采集
 │   │   ├── collector_test.go
 │   │   ├── history.go       # 环形缓冲历史缓存
 │   │   └── history_test.go
 │   └── repository/
+│       └── db.go            # GORM 连接 + AutoMigrate
 │       └── db.go            # GORM 连接 + AutoMigrate
 ├── pkg/
 │   └── seed/
@@ -116,21 +124,21 @@ backend/
 ```
 Handler（参数解析 + JSON 返回）
     ↓ 调用
-Repository（GORM 数据库操作）
-    ↓ 自动
-SQLite 持久化
-
-Monitor 采集器（goroutine + ticker 后台运行）
-    ↓ 写入
-环形缓冲（内存，线程安全）
-    ↓ 查询
-Dashboard handler 读取最新数据返回前端
+Service（业务逻辑组装）
+    ↓             ↓
+Repository     Monitor 采集器
+(GORM CRUD)    (gopsutil + 环形缓冲)
+    ↓                ↓
+SQLite 持久化    内存缓存
 ```
 
-- **Handler 层**：接收 HTTP 请求，解析参数，调用下层，返回 JSON
-- **Repository 层**：GORM 数据库 CRUD
+- **Handler 层**：接收 HTTP 请求，解析参数，调用 Service，返回 JSON
+- **Service 层**：业务逻辑组装，协调 Repository 和 Monitor 数据源
+- **Repository 层**：GORM 数据库连接与迁移（当前仅 `db.go`）
 - **Monitor 采集器**：独立 goroutine 每 10s 采集系统指标，存入环形缓冲
-- **App 生命周期**：依赖注入 + 信号监听（SIGINT/SIGTERM）实现优雅关闭
+- **App 生命周期**：依赖注入（NewServices → NewHandler）+ 信号监听实现优雅关闭
+
+各 Service 通过 `service.NewServices(db, history)` 聚合注入 Handler，业务逻辑在 Service 层完成，Handler 不直接操作数据库或采集器。
 
 ## 调试
 

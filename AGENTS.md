@@ -73,9 +73,9 @@ src/
 
 ## 四、文档维护
 
-- 环境/工具问题 → `docs/env-setup.md`
-- 项目构建踩坑 → `docs/project-issues.md`
-- 编码实践心得 → `docs/coding-notes.md`
+- 环境/工具问题 → `docs/env-setup-macos.md`
+- 开发经验与问题排查 → `docs/development-guide.md`（第三章常见问题）
+- 编码实践心得 → `docs/development-guide.md`（第二章前端模式）
 - 新增文档后，在对应文件中记录**根因分析**和**经验教训**
 
 ---

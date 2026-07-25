@@ -96,7 +96,10 @@ devops-dashboard/
 │       ├── monitor/               # gopsutil 采集器 + 历史缓存
 │       ├── repository/            # GORM 数据库操作
 │       └── pkg/seed/              # 模拟数据填充
-└── docs/                          # 开发文档与踩坑记录
+├── docs/                          # 开发文档
+│   ├── architecture.md            # 架构总览与 API 实现状态
+│   ├── development-guide.md       # 开发指南、常见问题与路线图
+│   └── env-setup-macos.md         # macOS 环境搭建
 ```
 
 ---
