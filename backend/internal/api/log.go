@@ -22,23 +22,11 @@ func (h *Handler) GetLogList(c *gin.Context) {
 		pageSize = 10
 	}
 
-	var logs []model.Log
-	var total int64
-
-	query := h.db.Model(&model.Log{})
-	if level != "" {
-		query = query.Where("level = ?", level)
+	logs, total, err := h.services.LogService.List(page, pageSize, level, service, keyword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-	if service != "" {
-		query = query.Where("service = ?", service)
-	}
-	if keyword != "" {
-		query = query.Where("content LIKE ? OR service LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
-	}
-
-	query.Count(&total)
-	query.Order("time DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&logs)
-
 	c.JSON(http.StatusOK, model.PagedResultLogItem{
 		List:     logs,
 		Total:    total,
