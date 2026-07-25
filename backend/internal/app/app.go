@@ -63,7 +63,7 @@ func (a *App) Init() error {
 
 	a.history = monitor.NewHistory(retain, interval)
 	a.stopCh = a.history.StartCollector(interval)
-		a.services = service.NewServices(a.db)
+	a.services = service.NewServices(a.db, a.history)
 
 	handler := api.NewHandler(a.db, a.history, a.services)
 	a.server = &http.Server{

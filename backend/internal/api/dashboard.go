@@ -1,34 +1,21 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
-	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) GetDashboardMetrics(c *gin.Context) {
-	snapshot, err := monitor.Collect()
+	metrics, err := h.services.DashboardService.GetMetrics()
 	if err != nil {
-		// 采集失败时回退到假数据，保证前端不白屏
-		c.JSON(http.StatusOK, model.DashboardMetrics{
-			CPU:        model.MetricValue{Current: 0, Status: "normal"},
-			Memory:     model.MetricValue{Current: 0, Status: "normal"},
-			Disk:       model.MetricValue{Current: 0, Status: "normal"},
-			AlertCount: 0,
-		})
-		return
+		slog.Warn("采集系统指标失败，使用降级数据", "err", err)
 	}
-
-	c.JSON(http.StatusOK, model.DashboardMetrics{
-		CPU:        model.MetricValue{Current: snapshot.CPUPercent, Status: monitor.Status(snapshot.CPUPercent)},
-		Memory:     model.MetricValue{Current: snapshot.MemoryPercent, Status: monitor.Status(snapshot.MemoryPercent)},
-		Disk:       model.MetricValue{Current: snapshot.DiskPercent, Status: monitor.Status(snapshot.DiskPercent)},
-		AlertCount: 0, // 告警数暂未接入真实数据源
-	})
+	c.JSON(http.StatusOK, metrics)
 }
 
 func (h *Handler) GetDashboardTrend(c *gin.Context) {
@@ -36,23 +23,11 @@ func (h *Handler) GetDashboardTrend(c *gin.Context) {
 	if hours < 1 || hours > 24 {
 		hours = 6
 	}
-
-	// 如果 history 未初始化，返回空数据
-	if h.history == nil {
-		c.JSON(http.StatusOK, model.DashboardTrend{
-			TimeLabels: []string{},
-			CpuData:    []float64{},
-			MemoryData: []float64{},
-		})
-		return
+	trend, err := h.services.DashboardService.GetTrend(hours)
+	if err != nil {
+		slog.Warn("获取趋势数据失败", "hours", hours, "err", err)
 	}
-
-	labels, cpuData, memoryData := h.history.Query(hours)
-	c.JSON(http.StatusOK, model.DashboardTrend{
-		TimeLabels: labels,
-		CpuData:    cpuData,
-		MemoryData: memoryData,
-	})
+	c.JSON(http.StatusOK, trend)
 }
 
 func (h *Handler) GetDashboardAlerts(c *gin.Context) {
