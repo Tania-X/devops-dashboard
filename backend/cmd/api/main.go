@@ -1,5 +1,19 @@
 package main
 
+// @title          DevOps Dashboard API
+// @version        1.0
+// @description    运维监控仪表盘后端接口
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.email  your-email@example.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /api
+
 import (
 	"log/slog"
 	"os"

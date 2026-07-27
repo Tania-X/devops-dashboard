@@ -1,0 +1,104 @@
+basePath: /api
+definitions:
+  model.DiskPartition:
+    properties:
+      mount:
+        type: string
+      totalGb:
+        type: integer
+      usedGb:
+        type: integer
+    type: object
+  model.NetworkInterface:
+    properties:
+      ip:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+    type: object
+  model.PagedResultServerItem:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/model.Server'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+    type: object
+  model.Server:
+    properties:
+      cpuCores:
+        type: integer
+      diskPartitions:
+        items:
+          $ref: '#/definitions/model.DiskPartition'
+        type: array
+      hostname:
+        type: string
+      id:
+        type: string
+      ip:
+        type: string
+      memoryGb:
+        type: integer
+      networkInterfaces:
+        items:
+          $ref: '#/definitions/model.NetworkInterface'
+        type: array
+      os:
+        type: string
+      status:
+        type: string
+      uptime:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: your-email@example.com
+    name: API Support
+  description: 运维监控仪表盘后端接口
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: DevOps Dashboard API
+  version: "1.0"
+paths:
+  /servers:
+    get:
+      description: 按分页、状态筛选返回服务器列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      - description: 状态筛选
+        enum:
+        - running
+        - stopped
+        - maintenance
+        in: query
+        name: status
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.PagedResultServerItem'
+      summary: 获取服务器列表
+      tags:
+      - Server
+swagger: "2.0"

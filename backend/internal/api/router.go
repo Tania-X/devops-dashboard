@@ -1,6 +1,14 @@
 package api
 
 import (
+
+	// ... 现有 import
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	// 导入自动生成的 docs 包
+	_ "github.com/Tania-X/devops-dashboard/backend/docs"
+
 	"net/http"
 	"time"
 
@@ -35,6 +43,9 @@ func (h *Handler) SetupRouter() *gin.Engine {
 	r.Use(RecoveryMiddleware())
 	r.Use(corsMiddleware())
 	r.Use(requestLogger())
+
+	// Swagger UI（只在非生产环境注册）
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")
 	{

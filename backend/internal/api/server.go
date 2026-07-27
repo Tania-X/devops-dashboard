@@ -8,6 +8,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetServerList 获取服务器列表
+// @Summary     获取服务器列表
+// @Description 按分页、状态筛选返回服务器列表
+// @Tags        Server
+// @Param       page     query int    false "页码"  default(1)
+// @Param       pageSize query int    false "每页条数" default(10)
+// @Param       status   query string false "状态筛选" Enums(running, stopped, maintenance)
+// @Success     200 {object} model.PagedResultServerItem
+// @Router      /servers [get]
 func (h *Handler) GetServerList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
