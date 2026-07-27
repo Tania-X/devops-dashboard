@@ -181,7 +181,7 @@ export default function DeploymentPage() {
           border: 'none',
           borderRadius: 4,
         }}
-        bodyStyle={{ padding: 16 }}
+        styles={{ body: { padding: 16 } }}
       >
         <Table
           columns={columns as any}

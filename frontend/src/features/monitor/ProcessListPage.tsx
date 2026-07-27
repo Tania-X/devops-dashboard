@@ -120,7 +120,7 @@ export default function ProcessListPage() {
               percent={Math.min(v, 100)}
               size="small"
               strokeColor={color}
-              trailColor="#333333"
+              railColor="#333333"
               showInfo={false}
               style={{ width: 60 }}
             />
@@ -144,7 +144,7 @@ export default function ProcessListPage() {
               percent={Math.min(v, 100)}
               size="small"
               strokeColor={color}
-              trailColor="#333333"
+              railColor="#333333"
               showInfo={false}
               style={{ width: 60 }}
             />
@@ -187,7 +187,7 @@ export default function ProcessListPage() {
           border: 'none',
           borderRadius: 4,
         }}
-        bodyStyle={{ padding: 16 }}
+        styles={{ body: { padding: 16 } }}
       >
         <Space style={{ marginBottom: 16 }} wrap>
           <Input.Search
@@ -237,12 +237,7 @@ export default function ProcessListPage() {
           dataSource={data}
           rowKey="pid"
           loading={loading}
-          pagination={{
-            current: currentPage,
-            pageSize: limit,
-            showTotal: (total) => `共 ${total} 个进程`,
-            onChange: (page) => setCurrentPage(page),
-          }}
+          pagination={false}
           onRow={(record) => ({
             onClick: () => handleRowClick(record),
             style: { cursor: 'pointer' },
@@ -275,8 +270,10 @@ export default function ProcessListPage() {
             <Descriptions
               title={<span style={{ color: '#ffffff', fontSize: 16, fontWeight: 500 }}>基本信息</span>}
               column={2}
-              labelStyle={{ color: '#aaaaaa' }}
-              contentStyle={{ color: '#ffffff' }}
+              styles={{
+              label: { color: '#aaaaaa' },
+              content: { color: '#ffffff' },
+            }}
               items={[
                 { key: '1', label: '进程名', children: selectedProcess.name },
                 { key: '2', label: 'PID', children: selectedProcess.pid },
@@ -312,7 +309,7 @@ export default function ProcessListPage() {
                     percent={Math.min(Math.round(selectedProcess.cpuPercent * 10) / 10, 100)}
                     size={60}
                     strokeColor={selectedProcess.cpuPercent > 50 ? '#e02f44' : '#177ddc'}
-                    trailColor="#333333"
+                    railColor="#333333"
                     format={(pct) => `${pct?.toFixed(1)}%`}
                   />
                 </Space>
@@ -325,7 +322,7 @@ export default function ProcessListPage() {
                     percent={Math.min(Math.round(selectedProcess.memoryPercent * 10) / 10, 100)}
                     size={60}
                     strokeColor={selectedProcess.memoryPercent > 30 ? '#f2c94c' : '#73bf69'}
-                    trailColor="#333333"
+                    railColor="#333333"
                     format={(pct) => `${pct?.toFixed(1)}%`}
                   />
                 </Space>

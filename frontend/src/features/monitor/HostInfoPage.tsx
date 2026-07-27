@@ -30,7 +30,7 @@ function InfoCard({
         borderRadius: 4,
         height: '100%',
       }}
-      bodyStyle={{ padding: 20 }}
+      styles={{ body: { padding: 20 } }}
     >
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
         <span style={{ color: '#177ddc', fontSize: 20, marginRight: 10 }}>{icon}</span>
@@ -124,8 +124,10 @@ export default function HostInfoPage() {
           <InfoCard icon={<CloudServerOutlined />} title="系统信息">
             <Descriptions
               column={1}
-              labelStyle={{ color: '#aaaaaa', paddingBottom: 8 }}
-              contentStyle={{ color: '#ffffff' }}
+              styles={{
+              label: { color: '#aaaaaa', paddingBottom: 8 },
+              content: { color: '#ffffff' },
+            }}
               items={[
                 { key: '1', label: (
                   <span><TagOutlined style={{ marginRight: 4 }} />主机名</span>
@@ -151,8 +153,10 @@ export default function HostInfoPage() {
           <InfoCard icon={<HddOutlined />} title="硬件信息">
             <Descriptions
               column={1}
-              labelStyle={{ color: '#aaaaaa', paddingBottom: 8 }}
-              contentStyle={{ color: '#ffffff' }}
+              styles={{
+              label: { color: '#aaaaaa', paddingBottom: 8 },
+              content: { color: '#ffffff' },
+            }}
               items={[
                 { key: '1', label: (
                   <span><InfoCircleOutlined style={{ marginRight: 4 }} />CPU 型号</span>
@@ -175,8 +179,10 @@ export default function HostInfoPage() {
           <InfoCard icon={<FieldTimeOutlined />} title="运行状态">
             <Descriptions
               column={1}
-              labelStyle={{ color: '#aaaaaa', paddingBottom: 8 }}
-              contentStyle={{ color: '#ffffff' }}
+              styles={{
+              label: { color: '#aaaaaa', paddingBottom: 8 },
+              content: { color: '#ffffff' },
+            }}
               items={[
                 { key: '1', label: (
                   <span><FieldTimeOutlined style={{ marginRight: 4 }} />运行时长</span>

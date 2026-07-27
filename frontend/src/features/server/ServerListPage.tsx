@@ -137,7 +137,7 @@ export default function ServerListPage() {
           border: 'none',
           borderRadius: 4,
         }}
-        bodyStyle={{ padding: 16 }}
+        styles={{ body: { padding: 16 } }}
       >
         <Space style={{ marginBottom: 16 }}>
           <span style={{ color: '#aaaaaa' }}>状态筛选：</span>
@@ -200,8 +200,10 @@ export default function ServerListPage() {
             <Descriptions
               title={<span style={{ color: '#ffffff', fontSize: 16, fontWeight: 500 }}>基本信息</span>}
               column={2}
-              labelStyle={{ color: '#aaaaaa' }}
-              contentStyle={{ color: '#ffffff' }}
+              styles={{
+              label: { color: '#aaaaaa' },
+              content: { color: '#ffffff' },
+            }}
               items={[
                 { key: '1', label: '主机名', children: selectedServer.hostname },
                 { key: '2', label: 'IP', children: selectedServer.ip },
@@ -244,7 +246,7 @@ export default function ServerListPage() {
                       percent={percent}
                       size="small"
                       strokeColor={percent > 90 ? '#e02f44' : percent > 75 ? '#f2c94c' : '#73bf69'}
-                      trailColor="#333333"
+                      railColor="#333333"
                       showInfo={false}
                     />
                   </Col>

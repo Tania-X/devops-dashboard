@@ -173,7 +173,7 @@ export default function LogQueryPage() {
           border: 'none',
           borderRadius: 4,
         }}
-        bodyStyle={{ padding: 16 }}
+        styles={{ body: { padding: 16 } }}
       >
         <Space style={{ marginBottom: 16 }} wrap>
           <span style={{ color: '#aaaaaa' }}>级别：</span>
