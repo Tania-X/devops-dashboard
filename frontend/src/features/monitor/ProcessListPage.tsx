@@ -72,6 +72,16 @@ export default function ProcessListPage() {
 
   const columns = [
     {
+      title: '#',
+      key: 'index',
+      width: 60,
+      render: (_: unknown, __: unknown, index: number) => (
+        <span style={{ color: '#666666', fontFamily: '"Roboto Mono", monospace' }}>
+          {index + 1}
+        </span>
+      ),
+    },
+    {
       title: 'PID',
       dataIndex: 'pid',
       key: 'pid',
@@ -186,7 +196,7 @@ export default function ProcessListPage() {
               { value: 'cpu', label: 'CPU' },
               { value: 'memory', label: '内存' },
               { value: 'pid', label: 'PID' },
-              { value: 'name', label: '名称' },
+              { value: 'name', label: '进程名' },
             ]}
           />
           <Select
