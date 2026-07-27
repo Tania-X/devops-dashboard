@@ -37,8 +37,7 @@ export default function ProcessListPage() {
   const [keyword, setKeyword] = useState('');
   const [sortBy, setSortBy] = useState<string>('cpu');
   const [order, setOrder] = useState<string>('desc');
-  const [limit, setLimit] = useState<number>(50);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState<number>(200);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedProcess, setSelectedProcess] = useState<ProcessDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -55,18 +54,11 @@ export default function ProcessListPage() {
 
   useEffect(() => {
     fetchList();
-    setCurrentPage(1);
   }, [sortBy, order, keyword, limit]);
 
-  // 自动刷新时不重置页码
+  // 自动刷新
   useEffect(() => {
-    const interval = setInterval(() => {
-      getDevOpsDashboardAPI()
-        .getProcessList({ sortBy: sortBy as any, order: order as any, keyword: keyword || undefined, limit })
-        .then((res) => {
-          setData(res.data);
-        });
-    }, 10000);
+    const interval = setInterval(fetchList, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -219,15 +211,15 @@ export default function ProcessListPage() {
               { value: 'asc', label: '升序' },
             ]}
           />
-          <span style={{ color: '#aaaaaa' }}>条数：</span>
+          <span style={{ color: '#aaaaaa' }}>最多显示：</span>
           <Select
             value={limit}
             onChange={(v) => setLimit(v)}
             style={{ width: 80 }}
             options={[
-              { value: 20, label: '20' },
-              { value: 50, label: '50' },
               { value: 100, label: '100' },
+              { value: 200, label: '200' },
+              { value: 500, label: '500' },
             ]}
           />
         </Space>
@@ -237,7 +229,11 @@ export default function ProcessListPage() {
           dataSource={data}
           rowKey="pid"
           loading={loading}
-          pagination={false}
+          pagination={{
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 个进程`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+          }}
           onRow={(record) => ({
             onClick: () => handleRowClick(record),
             style: { cursor: 'pointer' },

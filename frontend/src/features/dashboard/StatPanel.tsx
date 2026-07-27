@@ -35,10 +35,11 @@ export default function StatPanel({ config }: StatPanelProps) {
     let retryCount = 0;
 
     const fetchData = () => {
-      api.getDashboardMetrics({ params: { _t: Date.now() } } as any)
+      api.getDashboardMetrics()
         .then((res) => {
           if (cancelled) return;
           retryCount = 0;
+          console.log('[StatPanel]', config.title, 'raw res.data:', res.data);
           const raw = getValueByPath(res.data, config.dataKey);
           setValue(typeof raw === 'number' ? raw : Number(raw) || 0);
           if (!cancelled) setLoading(false);
