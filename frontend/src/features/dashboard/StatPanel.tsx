@@ -32,19 +32,25 @@ export default function StatPanel({ config }: StatPanelProps) {
   useEffect(() => {
     const api = getDevOpsDashboardAPI();
     let cancelled = false;
+    let retryCount = 0;
 
     const fetchData = () => {
-      api.getDashboardMetrics()
+      api.getDashboardMetrics({ params: { _t: Date.now() } } as any)
         .then((res) => {
           if (cancelled) return;
+          retryCount = 0;
           const raw = getValueByPath(res.data, config.dataKey);
           setValue(typeof raw === 'number' ? raw : Number(raw) || 0);
+          if (!cancelled) setLoading(false);
         })
         .catch((err) => {
-          console.error('[StatPanel] API 请求失败:', err);
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
+          console.error('[StatPanel] API 请求失败:', config.title, err);
+          retryCount++;
+          if (retryCount < 3 && !cancelled) {
+            setTimeout(fetchData, 2000);
+          } else if (!cancelled) {
+            setLoading(false);
+          }
         });
     };
 
@@ -71,7 +77,7 @@ export default function StatPanel({ config }: StatPanelProps) {
         borderRadius: 4,
         height: 120,
       }}
-      bodyStyle={{ padding: 16 }}
+      styles={{ body: { padding: 16 } }}
     >
       {loading ? (
         <Spin />

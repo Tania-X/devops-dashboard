@@ -38,6 +38,7 @@ export default function ProcessListPage() {
   const [sortBy, setSortBy] = useState<string>('cpu');
   const [order, setOrder] = useState<string>('desc');
   const [limit, setLimit] = useState<number>(50);
+  const [currentPage, setCurrentPage] = useState(1);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedProcess, setSelectedProcess] = useState<ProcessDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -54,10 +55,20 @@ export default function ProcessListPage() {
 
   useEffect(() => {
     fetchList();
-    // 每 10 秒自动刷新一次
-    const interval = setInterval(fetchList, 10000);
-    return () => clearInterval(interval);
+    setCurrentPage(1);
   }, [sortBy, order, keyword, limit]);
+
+  // 自动刷新时不重置页码
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getDevOpsDashboardAPI()
+        .getProcessList({ sortBy: sortBy as any, order: order as any, keyword: keyword || undefined, limit })
+        .then((res) => {
+          setData(res.data);
+        });
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRowClick = (record: ProcessItem) => {
     setDrawerVisible(true);
@@ -226,7 +237,12 @@ export default function ProcessListPage() {
           dataSource={data}
           rowKey="pid"
           loading={loading}
-          pagination={{ pageSize: limit, showTotal: (total) => `共 ${total} 个进程` }}
+          pagination={{
+            current: currentPage,
+            pageSize: limit,
+            showTotal: (total) => `共 ${total} 个进程`,
+            onChange: (page) => setCurrentPage(page),
+          }}
           onRow={(record) => ({
             onClick: () => handleRowClick(record),
             style: { cursor: 'pointer' },
