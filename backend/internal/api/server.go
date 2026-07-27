@@ -43,6 +43,14 @@ func (h *Handler) GetServerList(c *gin.Context) {
 	})
 }
 
+// GetServerDetail 获取服务器详情
+// @Summary     获取服务器详情
+// @Description 按 ID 获取单台服务器详情（含磁盘分区和网络接口）
+// @Tags        Server
+// @Param       id path string true "服务器 ID"
+// @Success     200 {object} model.Server
+// @Failure     404 {object} map[string]string
+// @Router      /servers/{id} [get]
 func (h *Handler) GetServerDetail(c *gin.Context) {
 	id := c.Param("id")
 

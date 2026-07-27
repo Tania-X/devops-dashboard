@@ -1,5 +1,72 @@
 basePath: /api
 definitions:
+  model.AlertItem:
+    properties:
+      id:
+        type: string
+      level:
+        type: string
+      message:
+        type: string
+      source:
+        type: string
+      time:
+        type: string
+    type: object
+  model.DashboardMetrics:
+    properties:
+      alertCount:
+        type: integer
+      cpu:
+        $ref: '#/definitions/model.MetricValue'
+      disk:
+        $ref: '#/definitions/model.MetricValue'
+      memory:
+        $ref: '#/definitions/model.MetricValue'
+    type: object
+  model.DashboardTrend:
+    properties:
+      cpuData:
+        items:
+          type: number
+        type: array
+      memoryData:
+        items:
+          type: number
+        type: array
+      timeLabels:
+        items:
+          type: string
+        type: array
+    type: object
+  model.Deployment:
+    properties:
+      appName:
+        type: string
+      env:
+        type: string
+      id:
+        type: string
+      lastDeployedAt:
+        type: string
+      status:
+        type: string
+      version:
+        type: string
+    type: object
+  model.DeploymentHistory:
+    properties:
+      deployedAt:
+        type: string
+      durationSec:
+        type: integer
+      operator:
+        type: string
+      status:
+        type: string
+      version:
+        type: string
+    type: object
   model.DiskPartition:
     properties:
       mount:
@@ -9,6 +76,61 @@ definitions:
       usedGb:
         type: integer
     type: object
+  model.HostInfo:
+    properties:
+      arch:
+        type: string
+      bootTime:
+        type: string
+      cpuCores:
+        type: integer
+      cpuLogicalCores:
+        type: integer
+      cpuModel:
+        type: string
+      hostname:
+        type: string
+      kernelVersion:
+        type: string
+      os:
+        type: string
+      platform:
+        type: string
+      platformVersion:
+        type: string
+      totalMemoryGb:
+        type: number
+      uptime:
+        type: string
+      virtualMemoryGb:
+        type: number
+    type: object
+  model.Log:
+    properties:
+      content:
+        type: string
+      id:
+        type: string
+      level:
+        type: string
+      logPath:
+        type: string
+      service:
+        type: string
+      sourceHost:
+        type: string
+      time:
+        type: string
+      traceId:
+        type: string
+    type: object
+  model.MetricValue:
+    properties:
+      current:
+        type: number
+      status:
+        type: string
+    type: object
   model.NetworkInterface:
     properties:
       ip:
@@ -17,6 +139,19 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  model.PagedResultLogItem:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/model.Log'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
     type: object
   model.PagedResultServerItem:
     properties:
@@ -30,6 +165,58 @@ definitions:
         type: integer
       total:
         type: integer
+    type: object
+  model.ProcessDetail:
+    properties:
+      cmdline:
+        type: string
+      cpuPercent:
+        type: number
+      createTime:
+        type: string
+      env:
+        items:
+          type: string
+        type: array
+      memoryMb:
+        type: number
+      memoryPercent:
+        type: number
+      name:
+        type: string
+      numConnections:
+        type: integer
+      numOpenFiles:
+        type: integer
+      numThreads:
+        type: integer
+      pid:
+        type: integer
+      ppid:
+        type: integer
+      status:
+        type: string
+      username:
+        type: string
+      workingDir:
+        type: string
+    type: object
+  model.ProcessItem:
+    properties:
+      cmdline:
+        type: string
+      cpuPercent:
+        type: number
+      memoryMb:
+        type: number
+      memoryPercent:
+        type: number
+      name:
+        type: string
+      pid:
+        type: integer
+      status:
+        type: string
     type: object
   model.Server:
     properties:
@@ -71,6 +258,217 @@ info:
   title: DevOps Dashboard API
   version: "1.0"
 paths:
+  /dashboard/alerts:
+    get:
+      description: 返回最近的告警条目
+      parameters:
+      - default: 5
+        description: 返回条数
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.AlertItem'
+            type: array
+      summary: 获取告警列表
+      tags:
+      - Dashboard
+  /dashboard/metrics:
+    get:
+      description: 返回本机实时的 CPU、内存、磁盘使用率及当前告警数
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DashboardMetrics'
+      summary: 获取仪表盘核心指标
+      tags:
+      - Dashboard
+  /dashboard/trend:
+    get:
+      description: 返回最近 N 小时内本机 CPU 和内存使用率的时序数据
+      parameters:
+      - default: 6
+        description: 查询小时范围
+        in: query
+        name: hours
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DashboardTrend'
+      summary: 获取仪表盘趋势数据
+      tags:
+      - Dashboard
+  /deployments:
+    get:
+      description: 返回所有应用的部署状态列表
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Deployment'
+            type: array
+      summary: 获取部署列表
+      tags:
+      - Deployment
+  /deployments/{id}/history:
+    get:
+      description: 按应用 ID 获取该应用的所有历史部署记录
+      parameters:
+      - description: 应用 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.DeploymentHistory'
+            type: array
+      summary: 获取部署历史
+      tags:
+      - Deployment
+  /health:
+    get:
+      description: 检查服务运行状态及数据库连通性
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 健康检查
+      tags:
+      - System
+  /logs:
+    get:
+      description: 按分页、级别、服务和关键词筛选返回日志列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      - description: 日志级别
+        enum:
+        - INFO
+        - WARN
+        - ERROR
+        in: query
+        name: level
+        type: string
+      - description: 服务名称
+        in: query
+        name: service
+        type: string
+      - description: 关键词搜索
+        in: query
+        name: keyword
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.PagedResultLogItem'
+      summary: 获取日志列表
+      tags:
+      - Log
+  /monitor/host:
+    get:
+      description: 返回本机的主机名、操作系统、CPU 和内存等详细信息
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.HostInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取主机信息
+      tags:
+      - Monitor
+  /monitor/processes:
+    get:
+      description: 返回本机所有进程列表，支持按字段排序和关键词搜索
+      parameters:
+      - default: cpu
+        description: 排序字段
+        enum:
+        - cpu
+        - memory
+        - pid
+        - name
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: 排序方向
+        enum:
+        - desc
+        - asc
+        in: query
+        name: order
+        type: string
+      - description: 进程名搜索
+        in: query
+        name: keyword
+        type: string
+      - default: 50
+        description: 返回条数
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.ProcessItem'
+            type: array
+      summary: 获取进程列表
+      tags:
+      - Monitor
+  /monitor/processes/{pid}:
+    get:
+      description: 按 PID 获取单个进程的详细信息
+      parameters:
+      - description: 进程 PID
+        in: path
+        name: pid
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ProcessDetail'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取进程详情
+      tags:
+      - Monitor
   /servers:
     get:
       description: 按分页、状态筛选返回服务器列表
@@ -99,6 +497,29 @@ paths:
           schema:
             $ref: '#/definitions/model.PagedResultServerItem'
       summary: 获取服务器列表
+      tags:
+      - Server
+  /servers/{id}:
+    get:
+      description: 按 ID 获取单台服务器详情（含磁盘分区和网络接口）
+      parameters:
+      - description: 服务器 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Server'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取服务器详情
       tags:
       - Server
 swagger: "2.0"

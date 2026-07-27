@@ -8,6 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetLogList 获取日志列表
+// @Summary     获取日志列表
+// @Description 按分页、级别、服务和关键词筛选返回日志列表
+// @Tags        Log
+// @Param       page     query int    false "页码"      default(1)
+// @Param       pageSize query int    false "每页条数"   default(10)
+// @Param       level    query string false "日志级别"   Enums(INFO, WARN, ERROR)
+// @Param       service  query string false "服务名称"
+// @Param       keyword  query string false "关键词搜索"
+// @Success     200 {object} model.PagedResultLogItem
+// @Router      /logs [get]
 func (h *Handler) GetLogList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))

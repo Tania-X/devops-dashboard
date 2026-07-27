@@ -24,6 +24,323 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/dashboard/alerts": {
+            "get": {
+                "description": "返回最近的告警条目",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "获取告警列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 5,
+                        "description": "返回条数",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.AlertItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard/metrics": {
+            "get": {
+                "description": "返回本机实时的 CPU、内存、磁盘使用率及当前告警数",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "获取仪表盘核心指标",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.DashboardMetrics"
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard/trend": {
+            "get": {
+                "description": "返回最近 N 小时内本机 CPU 和内存使用率的时序数据",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "获取仪表盘趋势数据",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 6,
+                        "description": "查询小时范围",
+                        "name": "hours",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.DashboardTrend"
+                        }
+                    }
+                }
+            }
+        },
+        "/deployments": {
+            "get": {
+                "description": "返回所有应用的部署状态列表",
+                "tags": [
+                    "Deployment"
+                ],
+                "summary": "获取部署列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Deployment"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/deployments/{id}/history": {
+            "get": {
+                "description": "按应用 ID 获取该应用的所有历史部署记录",
+                "tags": [
+                    "Deployment"
+                ],
+                "summary": "获取部署历史",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.DeploymentHistory"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "检查服务运行状态及数据库连通性",
+                "tags": [
+                    "System"
+                ],
+                "summary": "健康检查",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/logs": {
+            "get": {
+                "description": "按分页、级别、服务和关键词筛选返回日志列表",
+                "tags": [
+                    "Log"
+                ],
+                "summary": "获取日志列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "每页条数",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "INFO",
+                            "WARN",
+                            "ERROR"
+                        ],
+                        "type": "string",
+                        "description": "日志级别",
+                        "name": "level",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "服务名称",
+                        "name": "service",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "关键词搜索",
+                        "name": "keyword",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.PagedResultLogItem"
+                        }
+                    }
+                }
+            }
+        },
+        "/monitor/host": {
+            "get": {
+                "description": "返回本机的主机名、操作系统、CPU 和内存等详细信息",
+                "tags": [
+                    "Monitor"
+                ],
+                "summary": "获取主机信息",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.HostInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/monitor/processes": {
+            "get": {
+                "description": "返回本机所有进程列表，支持按字段排序和关键词搜索",
+                "tags": [
+                    "Monitor"
+                ],
+                "summary": "获取进程列表",
+                "parameters": [
+                    {
+                        "enum": [
+                            "cpu",
+                            "memory",
+                            "pid",
+                            "name"
+                        ],
+                        "type": "string",
+                        "default": "cpu",
+                        "description": "排序字段",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "排序方向",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "进程名搜索",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "返回条数",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.ProcessItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/monitor/processes/{pid}": {
+            "get": {
+                "description": "按 PID 获取单个进程的详细信息",
+                "tags": [
+                    "Monitor"
+                ],
+                "summary": "获取进程详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "进程 PID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ProcessDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/servers": {
             "get": {
                 "description": "按分页、状态筛选返回服务器列表",
@@ -67,9 +384,147 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/servers/{id}": {
+            "get": {
+                "description": "按 ID 获取单台服务器详情（含磁盘分区和网络接口）",
+                "tags": [
+                    "Server"
+                ],
+                "summary": "获取服务器详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "服务器 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Server"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "model.AlertItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DashboardMetrics": {
+            "type": "object",
+            "properties": {
+                "alertCount": {
+                    "type": "integer"
+                },
+                "cpu": {
+                    "$ref": "#/definitions/model.MetricValue"
+                },
+                "disk": {
+                    "$ref": "#/definitions/model.MetricValue"
+                },
+                "memory": {
+                    "$ref": "#/definitions/model.MetricValue"
+                }
+            }
+        },
+        "model.DashboardTrend": {
+            "type": "object",
+            "properties": {
+                "cpuData": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "memoryData": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "timeLabels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.Deployment": {
+            "type": "object",
+            "properties": {
+                "appName": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastDeployedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeploymentHistory": {
+            "type": "object",
+            "properties": {
+                "deployedAt": {
+                    "type": "string"
+                },
+                "durationSec": {
+                    "type": "integer"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "model.DiskPartition": {
             "type": "object",
             "properties": {
@@ -84,6 +539,90 @@ const docTemplate = `{
                 }
             }
         },
+        "model.HostInfo": {
+            "type": "object",
+            "properties": {
+                "arch": {
+                    "type": "string"
+                },
+                "bootTime": {
+                    "type": "string"
+                },
+                "cpuCores": {
+                    "type": "integer"
+                },
+                "cpuLogicalCores": {
+                    "type": "integer"
+                },
+                "cpuModel": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "kernelVersion": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "platformVersion": {
+                    "type": "string"
+                },
+                "totalMemoryGb": {
+                    "type": "number"
+                },
+                "uptime": {
+                    "type": "string"
+                },
+                "virtualMemoryGb": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.Log": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "logPath": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "sourceHost": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "string"
+                },
+                "traceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MetricValue": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "model.NetworkInterface": {
             "type": "object",
             "properties": {
@@ -95,6 +634,26 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "model.PagedResultLogItem": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Log"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -115,6 +674,85 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.ProcessDetail": {
+            "type": "object",
+            "properties": {
+                "cmdline": {
+                    "type": "string"
+                },
+                "cpuPercent": {
+                    "type": "number"
+                },
+                "createTime": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "memoryMb": {
+                    "type": "number"
+                },
+                "memoryPercent": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "numConnections": {
+                    "type": "integer"
+                },
+                "numOpenFiles": {
+                    "type": "integer"
+                },
+                "numThreads": {
+                    "type": "integer"
+                },
+                "pid": {
+                    "type": "integer"
+                },
+                "ppid": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "workingDir": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProcessItem": {
+            "type": "object",
+            "properties": {
+                "cmdline": {
+                    "type": "string"
+                },
+                "cpuPercent": {
+                    "type": "number"
+                },
+                "memoryMb": {
+                    "type": "number"
+                },
+                "memoryPercent": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pid": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },
