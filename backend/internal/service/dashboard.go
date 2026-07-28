@@ -8,19 +8,30 @@ import (
 )
 
 type DashboardService struct {
-	db      *gorm.DB
-	history *monitor.History
+	db              *gorm.DB
+	history         *monitor.History
+	remoteCollector *monitor.RemoteCollector
 }
 
-func NewDashboardService(db *gorm.DB, history *monitor.History) *DashboardService {
+func NewDashboardService(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector) *DashboardService {
 	return &DashboardService{
-		db:      db,
-		history: history,
+		db:              db,
+		history:         history,
+		remoteCollector: rc,
 	}
 }
 
 func (d *DashboardService) GetMetrics() (model.DashboardMetrics, error) {
-	snapshot, err := monitor.Collect()
+	var snapshot *monitor.MetricSnapshot
+	var err error
+
+	if d.remoteCollector != nil {
+		// 有远程 Agent：从 Agent 拉取
+		snapshot, err = d.remoteCollector.GetMetrics()
+	} else {
+		// 无 Agent：本地采集（降级）
+		snapshot, err = monitor.Collect()
+	}
 	if err != nil {
 		// 采集失败时回退到假数据，保证前端不白屏
 		return model.DashboardMetrics{

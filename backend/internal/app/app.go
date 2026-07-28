@@ -63,7 +63,17 @@ func (a *App) Init() error {
 
 	a.history = monitor.NewHistory(retain, interval)
 	a.stopCh = a.history.StartCollector(interval)
-	a.services = service.NewServices(a.db, a.history)
+
+	// 如果配置了 AGENT_HOSTS，创建远程采集器
+	var rc *monitor.RemoteCollector
+	if len(a.cfg.AgentHosts) > 0 {
+		rc = monitor.NewRemoteCollector(a.cfg.AgentHosts[0])
+		slog.Info("使用远程采集模式", "agent", a.cfg.AgentHosts[0])
+	} else {
+		slog.Info("使用本地采集模式（未配置 AGENT_HOSTS）")
+	}
+
+	a.services = service.NewServices(a.db, a.history, rc)
 
 	handler := api.NewHandler(a.db, a.history, a.services)
 	a.server = &http.Server{

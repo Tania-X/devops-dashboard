@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 // Config 聚合所有应用配置
 // 从环境变量读取，并提供合理的本地开发默认值
@@ -12,6 +15,7 @@ type Config struct {
 	Env             string // 运行环境：dev / prod
 	HistoryRetain   string // 历史数据保留时长，如 "24h"
 	HistoryInterval string // 历史数据采集间隔，如 "10s"
+	AgentHosts      []string // Agent 目标地址列表
 }
 
 // Load 从环境变量加载配置
@@ -46,6 +50,11 @@ func Load() Config {
 	}
 	if cfg.HistoryInterval == "" {
 		cfg.HistoryInterval = "10s"
+	}
+
+	hosts := os.Getenv("AGENT_HOSTS")
+	if hosts != "" {
+		cfg.AgentHosts = strings.Split(hosts, ",")
 	}
 
 	return cfg
