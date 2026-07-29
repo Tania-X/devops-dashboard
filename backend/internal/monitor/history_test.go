@@ -8,7 +8,7 @@ import (
 // TestHistory_RecordAndQuery 验证基本的记录和查询逻辑
 func TestHistory_RecordAndQuery(t *testing.T) {
 	// 保留1小时，每1分钟采一个点，最多60个点
-	h := NewHistory(time.Hour, time.Minute)
+	h := NewHistory(time.Hour, time.Minute, nil)
 
 	now := time.Now()
 	h.Record(HistoryPoint{Timestamp: now.Add(-30 * time.Minute), CPUPercent: 10.0, MemoryPercent: 20.0})
@@ -50,7 +50,7 @@ func TestHistory_RecordAndQuery(t *testing.T) {
 // TestHistory_QueryCutoff 验证 Query 会正确过滤超时的数据
 func TestHistory_QueryCutoff(t *testing.T) {
 	// 保留1小时，每1分钟一个点
-	h := NewHistory(time.Hour, time.Minute)
+	h := NewHistory(time.Hour, time.Minute, nil)
 
 	now := time.Now()
 	// 插入一个 3 小时前的点（超出查询范围）
@@ -71,7 +71,7 @@ func TestHistory_QueryCutoff(t *testing.T) {
 // TestHistory_Eviction 验证容量满了之后淘汰最旧的数据
 func TestHistory_Eviction(t *testing.T) {
 	// 保留5秒，每1秒一个点，最多5个点
-	h := NewHistory(5*time.Second, time.Second)
+	h := NewHistory(5*time.Second, time.Second, nil)
 
 	base := time.Now()
 	for i := 0; i < 10; i++ {
@@ -98,7 +98,7 @@ func TestHistory_Eviction(t *testing.T) {
 
 // TestHistory_Concurrent 验证并发读写安全
 func TestHistory_Concurrent(t *testing.T) {
-	h := NewHistory(time.Hour, time.Second)
+	h := NewHistory(time.Hour, time.Second, nil)
 
 	// 启动 10 个 goroutine 同时写入
 	for i := 0; i < 10; i++ {
@@ -130,7 +130,7 @@ func TestHistory_Concurrent(t *testing.T) {
 // TestHistory_StartCollector 验证后台采集 goroutine 能正常工作
 func TestHistory_StartCollector(t *testing.T) {
 	// 用 100ms 间隔快速验证，保留 1 秒，最多 10 个点
-	h := NewHistory(time.Second, 100*time.Millisecond)
+	h := NewHistory(time.Second, 100*time.Millisecond, nil)
 
 	stopCh := h.StartCollector(100 * time.Millisecond)
 	defer close(stopCh)
