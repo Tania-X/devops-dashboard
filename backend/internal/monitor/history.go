@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -19,6 +20,7 @@ type History struct {
 	writePos int            // 下一个写入位置
 	count    int            // 当前有效元素数（0..maxSize）
 	maxSize  int
+	alerter  *Alerter
 }
 
 // NewHistory 创建历史记录器
@@ -27,14 +29,15 @@ type History struct {
 //	interval: 采样间隔（如 10s）
 //
 // 根据两者计算出最多存储多少个点
-func NewHistory(retain, interval time.Duration) *History {
+func NewHistory(retain, interval time.Duration, alerter *Alerter) *History {
 	maxSize := int(retain / interval)
 	if maxSize < 1 {
 		maxSize = 1
 	}
 	return &History{
-		data:    make([]HistoryPoint, maxSize), // len=maxSize, cap=maxSize
+		data:    make([]HistoryPoint, maxSize),
 		maxSize: maxSize,
+		alerter: alerter,
 	}
 }
 
@@ -91,6 +94,7 @@ func (h *History) StartCollector(interval time.Duration) chan struct{} {
 			case <-ticker.C:
 				snapshot, err := Collect()
 				if err != nil {
+					slog.Warn("定时采集系统指标失败", "err", err)
 					continue
 				}
 				h.Record(HistoryPoint{
@@ -98,6 +102,9 @@ func (h *History) StartCollector(interval time.Duration) chan struct{} {
 					CPUPercent:    snapshot.CPUPercent,
 					MemoryPercent: snapshot.MemoryPercent,
 				})
+				if h.alerter != nil {
+					h.alerter.Evaluate(snapshot)
+				}
 			case <-stopCh:
 				return
 			}

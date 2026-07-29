@@ -14,12 +14,12 @@ type Services struct {
 	MonitorService    *MonitorService
 }
 
-func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector) *Services {
+func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter) *Services {
 	return &Services{
 		ServerService:     NewServerService(db),
 		DeploymentService: NewDeploymentService(db),
 		LogService:        NewLogService(db),
-		DashboardService:  NewDashboardService(db, history, rc),
+		DashboardService:  NewDashboardService(db, history, rc, alerter),
 		MonitorService:    NewMonitorService(db),
 	}
 }

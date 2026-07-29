@@ -61,7 +61,11 @@ func (a *App) Init() error {
 		return fmt.Errorf("invalid HISTORY_INTERVAL %q: %w", a.cfg.HistoryInterval, err)
 	}
 
-	a.history = monitor.NewHistory(retain, interval)
+	// 创建告警评估器
+	alerter := monitor.NewAlerter()
+	slog.Info("告警引擎已启动", "maxAlerts", 20)
+
+	a.history = monitor.NewHistory(retain, interval, alerter)
 	a.stopCh = a.history.StartCollector(interval)
 
 	// 如果配置了 AGENT_HOSTS，创建远程采集器
@@ -73,7 +77,7 @@ func (a *App) Init() error {
 		slog.Info("使用本地采集模式（未配置 AGENT_HOSTS）")
 	}
 
-	a.services = service.NewServices(a.db, a.history, rc)
+	a.services = service.NewServices(a.db, a.history, rc, alerter)
 
 	handler := api.NewHandler(a.db, a.history, a.services)
 	a.server = &http.Server{
