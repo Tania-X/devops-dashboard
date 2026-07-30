@@ -1,0 +1,14 @@
+services:
+  server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/storage:/data
+    environment:
+      - PORT=8080
+      - ENV=prod
+      - AGENT_HOSTS=${AGENT_HOSTS:-}
+    restart: unless-stopped

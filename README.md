@@ -88,7 +88,9 @@ devops-dashboard/
 │       │   ├── deployment/        # 部署状态
 │       │   └── monitor/           # 实时监控（进程列表 + 主机信息）
 │       └── mocks/                 # MSW Mock Handler
+├── docker-compose.yml              # Docker 编排
 ├── backend/                       # Go 后端
+│   ├── Dockerfile                  # 后端容器构建
 │   ├── cmd/api/main.go            # 入口
 │   └── internal/
 │       ├── api/                   # HTTP Handler（路由 + 控制器）
@@ -148,13 +150,42 @@ go build -o server cmd/api/main.go
 
 ### 全量部署（后端 + 前端）
 
-当前项目**尚无 Docker 化配置**。基础部署方式：
+#### 方式 A：Docker 部署（推荐）
 
-1. 后端编译为二进制，运行在目标服务器
-2. 前端构建产物（`dist/`）由 Nginx 托管
-3. Nginx 反代 `/api/*` 到后端端口
+```bash
+# 启动
+docker compose up -d
 
-> 后续可添加 `Dockerfile` 和 `docker-compose.yml` 实现容器化部署。
+# 查看日志
+docker compose logs -f
+
+# 停止
+docker compose down
+```
+
+如果配置了 Agent 采集，启动时传入地址：
+
+```bash
+AGENT_HOSTS=192.168.1.100:9100 docker compose up -d
+```
+
+**说明**：
+- 后端使用多阶段构建，运行镜像 ~15MB
+- SQLite 数据通过 `volumes` 挂载到 `backend/storage/`，容器销毁数据不丢
+- Agent **不放入 Docker**——Agent 需直接访问宿主机系统指标，应编译为裸 exe 在目标机器运行（见 `docs/build-deploy.md`）
+
+#### 方式 B：直接运行
+
+```bash
+# 前端
+cd frontend && npm run build   # 产出 dist/
+
+# 后端
+cd backend && go build -o bin/devops-api.exe ./cmd/api
+.\bin\devops-api.exe
+```
+
+前端产物由 Nginx 或后端 Gin 托管静态文件即可。
 
 ---
 
