@@ -24,7 +24,7 @@ func (h *Handler) GetProcessList(c *gin.Context) {
 	order := c.DefaultQuery("order", "desc")
 	keyword := strings.ToLower(c.DefaultQuery("keyword", ""))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	if limit < 1 || limit > 200 {
+	if limit < 1 || limit > 1000 {
 		limit = 50
 	}
 	items, err := h.services.MonitorService.GetProcessList(sortBy, order, keyword, limit)
