@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/Tania-X/devops-dashboard/backend/internal/logs"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
 	"gorm.io/gorm"
 )
@@ -15,10 +16,11 @@ type Services struct {
 }
 
 func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter) *Services {
+	logReader := logs.NewReader("storage/logs/app.log")
 	return &Services{
 		ServerService:     NewServerService(db),
 		DeploymentService: NewDeploymentService(db),
-		LogService:        NewLogService(db),
+		LogService:        NewLogService(logReader),
 		DashboardService:  NewDashboardService(db, history, rc, alerter),
 		MonitorService:    NewMonitorService(db),
 	}

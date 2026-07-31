@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -131,7 +132,7 @@ func (a *App) shutdown() error {
 	return nil
 }
 
-// setupLogger 根据配置初始化 slog
+// setupLogger 根据配置初始化 slog，同时写入 stdout 和文件
 //
 //	text 格式便于本地开发调试阅读；json 格式便于接入 Loki 等日志系统
 func (a *App) setupLogger() {
@@ -162,12 +163,24 @@ func (a *App) setupLogger() {
 		attrs = append(attrs, slog.String("hostname", hostname))
 	}
 
+	// 双写：stdout + 日志文件（供 /api/logs 读取）
+	logDir := "storage/logs"
+	logFile := logDir + "/app.log"
+	os.MkdirAll(logDir, 0755)
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	multiWriter := io.MultiWriter(os.Stdout)
+	if err == nil {
+		multiWriter = io.MultiWriter(os.Stdout, f)
+	} else {
+		slog.Warn("无法创建日志文件，仅输出到 stdout", "err", err)
+	}
+
 	var handler slog.Handler
 	switch a.cfg.LogFormat {
 	case "json":
-		handler = slog.NewJSONHandler(os.Stdout, opts).WithAttrs(attrs)
+		handler = slog.NewJSONHandler(multiWriter, opts).WithAttrs(attrs)
 	default:
-		handler = slog.NewTextHandler(os.Stdout, opts).WithAttrs(attrs)
+		handler = slog.NewTextHandler(multiWriter, opts).WithAttrs(attrs)
 	}
 
 	slog.SetDefault(slog.New(handler))
