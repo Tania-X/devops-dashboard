@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Table, Tag, Drawer, Select, Space, Card, Descriptions, Spin, Input, Progress, Row, Col } from 'antd';
 import type { ProcessItem, ProcessDetail } from '../../api/model';
 import { getDevOpsDashboardAPI } from '../../api/client';
@@ -38,6 +38,8 @@ export default function ProcessListPage() {
   const [sortBy, setSortBy] = useState<string>('cpu');
   const [order, setOrder] = useState<string>('desc');
   const [limit, setLimit] = useState<number>(200);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedProcess, setSelectedProcess] = useState<ProcessDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -47,18 +49,31 @@ export default function ProcessListPage() {
     getDevOpsDashboardAPI()
       .getProcessList({ sortBy: sortBy as any, order: order as any, keyword: keyword || undefined, limit })
       .then((res) => {
+        console.log('[ProcessList] 收到数据:', res.data?.length, '条');
         setData(res.data);
+      })
+      .catch((err) => {
+        console.error('[ProcessList] API 调用失败:', err);
       })
       .finally(() => setLoading(false));
   };
+
+  // 持有最新 fetchList 的引用，避免 setInterval 闭包捕获旧值
+  const fetchListRef = useRef(fetchList);
+  fetchListRef.current = fetchList;
 
   useEffect(() => {
     fetchList();
   }, [sortBy, order, keyword, limit]);
 
-  // 自动刷新
+  // limit 变化时重置页码
   useEffect(() => {
-    const interval = setInterval(fetchList, 10000);
+    setCurrentPage(1);
+  }, [limit]);
+
+  // 自动刷新——通过 ref 始终拿到最新的 fetchList
+  useEffect(() => {
+    const interval = setInterval(() => fetchListRef.current(), 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -230,9 +245,15 @@ export default function ProcessListPage() {
           rowKey="pid"
           loading={loading}
           pagination={{
+            current: currentPage,
+            pageSize: pageSize,
             showSizeChanger: true,
             showTotal: (total) => `共 ${total} 个进程`,
             pageSizeOptions: ['10', '20', '50', '100'],
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+            },
           }}
           onRow={(record) => ({
             onClick: () => handleRowClick(record),
@@ -250,7 +271,7 @@ export default function ProcessListPage() {
         }
         open={drawerVisible}
         onClose={() => setDrawerVisible(false)}
-        width={600}
+        size="large"
         styles={{
           body: { background: '#141414', padding: 24 },
           header: { background: '#1f1f1f', borderBottom: '1px solid #333333' },
