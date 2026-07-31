@@ -14,6 +14,22 @@
 - 可以提示用户"变更已就绪，是否需要提交？"
 - 不得在未经确认的情况下将代码推送到远程仓库
 
+### 1.2 Commit Message 格式
+
+本项目遵循 [Conventional Commits](https://www.conventionalcommits.org/) 约定。格式：`<type>(scope): <message>`
+
+| type | 说明 | 示例 |
+|------|------|------|
+| `feat` | 新功能 | `feat(backend): Agent 化（Pull 模型）` |
+| `fix` | Bug 修复 | `fix(frontend): 分页翻页后数据不更新` |
+| `docs` | 文档变更 | `docs: 构建与发布指南` |
+| `refactor` | 代码重构（不改行为） | `refactor: Service 层抽取` |
+| `test` | 测试相关 | `test(backend): 告警引擎测试` |
+| `chore` | 工程事务（不改源代码） | `chore: .gitignore 修复屏蔽规则` |
+| `style` | 格式调整（空格、分号等） | `style: gofmt` |
+
+`scope` 可省略，常用值：`backend` / `frontend` / `docs`。
+
 ---
 
 ## 二、项目概述
