@@ -1,5 +1,8 @@
 services:
   server:
+    # 生产环境：拉取 ghcr.io 镜像（需要先 docker login ghcr.io）
+    # 开发环境：直接 build（默认）
+    image: ${SERVER_IMAGE:-}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -12,3 +15,15 @@ services:
       - ENV=prod
       - AGENT_HOSTS=${AGENT_HOSTS:-}
     restart: unless-stopped
+
+  # 可选：在本地也起一个 agent 方便测试
+  agent:
+    image: ${AGENT_IMAGE:-}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.agent
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    profiles:
+      - agent
