@@ -80,7 +80,7 @@ func (a *App) Init() error {
 
 	a.services = service.NewServices(a.db, a.history, rc, alerter)
 
-	handler := api.NewHandler(a.db, a.history, a.services)
+	handler := api.NewHandler(a.services)
 	a.server = &http.Server{
 		Addr:    ":" + a.cfg.Port,
 		Handler: handler.SetupRouter(),

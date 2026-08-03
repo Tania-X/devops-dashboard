@@ -29,7 +29,7 @@ time=2026-07-31T12:05:00+08:00 level=ERROR msg=数据库查询超时 service=mya
 	svcs := &service.Services{
 		LogService: service.NewLogService(logs.NewReader(logPath)),
 	}
-	h := NewHandler(nil, nil, svcs)
+	h := NewHandler(svcs)
 	router := h.SetupRouter()
 
 	cases := []struct {
@@ -97,5 +97,4 @@ time=2026-07-31T12:05:00+08:00 level=ERROR msg=数据库查询超时 service=mya
 	}
 }
 
-// 注意：NewHandler(nil, nil, svcs) 中 db 和 history 为 nil，但只要只访问
-// /api/logs 就不会触发 nil dereference——GetLogList 只用 h.services.LogService。
+// NewHandler(svcs) 中只注入 LogService，其他 service 为 nil，但 /api/logs 只用到 LogService。

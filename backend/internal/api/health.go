@@ -14,16 +14,8 @@ import (
 // @Success     200 {object} map[string]string
 // @Router      /health [get]
 func (h *Handler) HealthCheck(c *gin.Context) {
-	if h.db == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "ok", "db": "disconnected"})
-		return
-	}
-	sqlDB, err := h.db.DB()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "ok", "db": "disconnected"})
-		return
-	}
-	if err := sqlDB.Ping(); err != nil {
+	ok, err := h.services.HealthCheck()
+	if !ok || err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ok", "db": "disconnected"})
 		return
 	}

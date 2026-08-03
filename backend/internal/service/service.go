@@ -8,6 +8,8 @@ import (
 
 // Services 聚合所有 Service，方便 Handler 一次性获取依赖
 type Services struct {
+	db *gorm.DB
+
 	ServerService     *ServerService
 	DeploymentService *DeploymentService
 	LogService        *LogService
@@ -15,9 +17,22 @@ type Services struct {
 	MonitorService    *MonitorService
 }
 
+// HealthCheck 检查数据库连通性
+func (s *Services) HealthCheck() (bool, error) {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return false, err
+	}
+	if err := sqlDB.Ping(); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter) *Services {
 	logReader := logs.NewReader("storage/logs/app.log")
 	return &Services{
+		db:                db,
 		ServerService:     NewServerService(db),
 		DeploymentService: NewDeploymentService(db),
 		LogService:        NewLogService(logReader),
