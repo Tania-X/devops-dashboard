@@ -16,13 +16,14 @@ const statusLabelMap: Record<string, string> = {
   unknown: '未知',
 };
 
+const api = getDevOpsDashboardAPI(); // 模块级单例，避免每次渲染重建导致 useCallback 失效
+
 export default function AgentPage() {
   const [data, setData] = useState<AgentTarget[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AgentTarget | null>(null);
   const [form] = Form.useForm();
-  const api = getDevOpsDashboardAPI();
 
   const fetchData = useCallback(async () => {
     setLoading(true);

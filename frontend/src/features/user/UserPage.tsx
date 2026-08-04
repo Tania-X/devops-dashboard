@@ -21,12 +21,13 @@ interface UserFormModalProps {
   onSuccess: () => void;
 }
 
+const api = getDevOpsDashboardAPI(); // 模块级单例，避免每次渲染重建导致 useCallback 失效
+
 function UserFormModal({ open, editingUser, onClose, onSuccess }: UserFormModalProps) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const editingId = editingUser?.id;
   const editingRole = editingUser?.role;
-  const api = getDevOpsDashboardAPI();
 
   useEffect(() => {
     if (open) {
@@ -93,7 +94,6 @@ export default function UserPage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
-  const api = getDevOpsDashboardAPI();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
