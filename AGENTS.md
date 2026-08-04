@@ -30,6 +30,23 @@
 
 `scope` 可省略，常用值：`backend` / `frontend` / `docs`。
 
+### 1.3 Git 操作禁止项（事故教训，2026-08-04）
+
+> 背景：一次 `git rebase -i` 中途报 `not a valid object`，随后执行 `git reset --hard` 导致仓库对象库损坏、全部未推送提交丢失。
+
+**禁止：**
+
+- ❌ **禁止对未推送的本地提交直接 `git rebase -i`**（压缩历史前必须先推送远端备份）
+- ❌ **禁止在 rebase/操作失败后直接 `git reset --hard`**——先确认对象库完好
+- ❌ **禁止使用 `git clean -fd` 等带强制清理参数的命令**（可能连带删除未跟踪的源码文件）
+
+**必须：**
+
+- ✅ rebase / squash 前先 `git push` 到远端备份
+- ✅ 任何 git 操作失败后，第一时间执行 `git reflog` 和 `git fsck --full` 检查状态
+- ✅ rebase 中途出错立即 `git rebase --abort`，不要继续其他破坏性命令
+- ✅ 把握不准时把输出贴给用户，不要自行决定恢复手段
+
 ---
 
 ## 二、项目概述
