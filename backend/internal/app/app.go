@@ -78,7 +78,7 @@ func (a *App) Init() error {
 		slog.Info("使用本地采集模式（未配置 AGENT_HOSTS）")
 	}
 
-	a.services = service.NewServices(a.db, a.history, rc, alerter)
+	a.services = service.NewServices(a.db, a.history, rc, alerter, a.cfg.JwtSecret, a.cfg.AgentSecretKey, a.cfg.AgentBinPath)
 
 	handler := api.NewHandler(a.services)
 	a.server = &http.Server{

@@ -16,6 +16,9 @@ type Config struct {
 	HistoryRetain   string // 历史数据保留时长，如 "24h"
 	HistoryInterval string // 历史数据采集间隔，如 "10s"
 	AgentHosts      []string // Agent 目标地址列表
+	AgentSecretKey  string   // Agent 密码加密密钥
+	AgentBinPath    string   // Agent 二进制文件路径
+	JwtSecret       string   // JWT 签名密钥
 }
 
 // Load 从环境变量加载配置
@@ -55,6 +58,21 @@ func Load() Config {
 	hosts := os.Getenv("AGENT_HOSTS")
 	if hosts != "" {
 		cfg.AgentHosts = strings.Split(hosts, ",")
+	}
+
+	cfg.AgentSecretKey = os.Getenv("AGENT_SECRET_KEY")
+	if cfg.AgentSecretKey == "" {
+		cfg.AgentSecretKey = "devops-dashboard-secret-key-32byte!"
+	}
+
+	cfg.AgentBinPath = os.Getenv("AGENT_BIN_PATH")
+	if cfg.AgentBinPath == "" {
+		cfg.AgentBinPath = "bin/agent-linux-amd64"
+	}
+
+	cfg.JwtSecret = os.Getenv("JWT_SECRET")
+	if cfg.JwtSecret == "" {
+		cfg.JwtSecret = "devops-dashboard-jwt-secret-key"
 	}
 
 	return cfg

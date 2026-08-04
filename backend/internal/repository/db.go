@@ -7,6 +7,8 @@ import (
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/glebarez/sqlite"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -34,9 +36,32 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		&model.Log{},
 		&model.Deployment{},
 		&model.DeploymentHistory{},
+		&model.AgentTarget{},
+		&model.User{},
 	); err != nil {
 		return nil, fmt.Errorf("AutoMigrate 失败: %w", err)
 	}
 
+	seedAdminUser(db)
+
 	return db, nil
+}
+
+func seedAdminUser(db *gorm.DB) {
+	var count int64
+	db.Model(&model.User{}).Count(&count)
+	if count > 0 {
+		return
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	if err != nil {
+		return
+	}
+	admin := model.User{
+		ID:        uuid.New().String(),
+		Username:  "admin",
+		Password:  string(hashed),
+		Role:      "admin",
+	}
+	db.Create(&admin)
 }

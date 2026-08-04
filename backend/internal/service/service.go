@@ -15,6 +15,9 @@ type Services struct {
 	LogService        *LogService
 	DashboardService  *DashboardService
 	MonitorService    *MonitorService
+	AgentService      *AgentService
+	AuthService       *AuthService
+	UserService       *UserService
 }
 
 // HealthCheck 检查数据库连通性
@@ -29,7 +32,7 @@ func (s *Services) HealthCheck() (bool, error) {
 	return true, nil
 }
 
-func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter) *Services {
+func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter, jwtSecret string, agentSecretKey string, agentBinPath string) *Services {
 	logReader := logs.NewReader("storage/logs/app.log")
 	return &Services{
 		db:                db,
@@ -38,5 +41,8 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 		LogService:        NewLogService(logReader),
 		DashboardService:  NewDashboardService(db, history, rc, alerter),
 		MonitorService:    NewMonitorService(db),
+		AgentService:      NewAgentService(db, agentSecretKey, agentBinPath),
+		AuthService:       NewAuthService(db, jwtSecret),
+		UserService:       NewUserService(db),
 	}
 }

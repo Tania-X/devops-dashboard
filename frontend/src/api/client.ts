@@ -33,6 +33,7 @@ import type {
 } from 'msw';
 
 import type {
+  AgentTarget,
   AlertItem,
   DashboardMetrics,
   DashboardTrend,
@@ -43,8 +44,29 @@ import type {
   PagedResultServerItem,
   ProcessDetail,
   ProcessItem,
-  ServerDetail
+  ServerDetail,
+  UserItem
 } from './model';
+
+axios.default.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+axios.default.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const getDevOpsDashboardAPI = () => {
 /**
@@ -189,7 +211,151 @@ const getHostInfo = <TData = AxiosResponse<HostInfo>>(
     );
   }
 
-return {getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo}};
+/**
+ * 获取 Agent 分发目标列表
+ * @summary 获取 Agent 列表
+ */
+const getAgentList = <TData = AxiosResponse<AgentTarget[]>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/agents`,options
+    );
+  }
+
+/**
+ * 创建 Agent 分发目标
+ * @summary 创建 Agent
+ */
+const createAgent = <TData = AxiosResponse<AgentTarget>>(
+    data: Partial<AgentTarget>, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/agents`,data,options
+    );
+  }
+
+/**
+ * 更新 Agent 分发目标
+ * @summary 更新 Agent
+ */
+const updateAgent = <TData = AxiosResponse<AgentTarget>>(
+    id: string, data: Partial<AgentTarget>, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.put(
+      `/api/agents/${id}`,data,options
+    );
+  }
+
+/**
+ * 删除 Agent 分发目标
+ * @summary 删除 Agent
+ */
+const deleteAgent = <TData = AxiosResponse<void>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.delete(
+      `/api/agents/${id}`,options
+    );
+  }
+
+/**
+ * 部署 Agent
+ * @summary 部署 Agent
+ */
+const deployAgent = <TData = AxiosResponse<{ message: string }>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/agents/${id}/deploy`,{},options
+    );
+  }
+
+/**
+ * 停止 Agent
+ * @summary 停止 Agent
+ */
+const stopAgent = <TData = AxiosResponse<{ message: string }>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/agents/${id}/stop`,{},options
+    );
+  }
+
+/**
+ * 检查 Agent 状态
+ * @summary 检查 Agent 状态
+ */
+const checkAgentStatus = <TData = AxiosResponse<{ status: string }>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/agents/${id}/status`,options
+    );
+  }
+
+/**
+ * 获取用户列表
+ * @summary 获取用户列表
+ */
+const getUserList = <TData = AxiosResponse<UserItem[]>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/users`,options
+    );
+  }
+
+/**
+ * 创建用户
+ * @summary 创建用户
+ */
+const createUser = <TData = AxiosResponse<UserItem>>(
+    data: { username: string; password: string; role: string }, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/users`,data,options
+    );
+  }
+
+/**
+ * 更新用户
+ * @summary 更新用户
+ */
+const updateUser = <TData = AxiosResponse<UserItem>>(
+    id: string, data: { username?: string; password?: string; role?: string }, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.put(
+      `/api/users/${id}`,data,options
+    );
+  }
+
+/**
+ * 删除用户
+ * @summary 删除用户
+ */
+const deleteUser = <TData = AxiosResponse<void>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.delete(
+      `/api/users/${id}`,options
+    );
+  }
+
+/**
+ * 登出
+ * @summary 登出
+ */
+const logout = <TData = AxiosResponse<{ message: string }>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/auth/logout`,{},options
+    );
+  }
+
+return {getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser,logout}};
 export type GetDashboardMetricsResult = AxiosResponse<DashboardMetrics>
 export type GetDashboardTrendResult = AxiosResponse<DashboardTrend>
 export type GetDashboardAlertsResult = AxiosResponse<AlertItem[]>

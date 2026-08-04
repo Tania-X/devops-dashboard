@@ -5,6 +5,8 @@ import {
   FileTextOutlined,
   RocketOutlined,
   FundOutlined,
+  NodeIndexOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -35,6 +37,16 @@ const menuItems = [
     key: '/monitor',
     icon: <FundOutlined />,
     label: '实时监控',
+  },
+  {
+    key: '/agents',
+    icon: <NodeIndexOutlined />,
+    label: 'Agent 管理',
+  },
+  {
+    key: '/users',
+    icon: <UserOutlined />,
+    label: '用户管理',
   },
 ];
 

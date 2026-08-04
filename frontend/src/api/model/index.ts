@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from './agentTarget';
 export * from './alertItem';
 export * from './alertItemLevel';
 export * from './dashboardMetrics';
@@ -26,6 +27,7 @@ export * from './getProcessListSortBy';
 export * from './getServerListParams';
 export * from './getServerListStatus';
 export * from './hostInfo';
+export * from './userItem';
 export * from './logItem';
 export * from './logItemLevel';
 export * from './metricValue';
