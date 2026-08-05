@@ -25,20 +25,23 @@ export default function AgentPage() {
   const [editing, setEditing] = useState<AgentTarget | null>(null);
   const [form] = Form.useForm();
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await api.getAgentList();
       setData(res.data);
     } catch {
-      message.error('获取 Agent 列表失败');
+      if (!silent) message.error('获取 Agent 列表失败');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [api]);
 
+  // 首次加载 + 每 5 秒静默轮询（状态自动刷新，不闪 loading）
   useEffect(() => {
     fetchData();
+    const timer = setInterval(() => fetchData(true), 5000);
+    return () => clearInterval(timer);
   }, [fetchData]);
 
   const openCreate = () => {
