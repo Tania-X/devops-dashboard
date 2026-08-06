@@ -41,17 +41,6 @@ function InfoCard({
   );
 }
 
-function LabelValue({ label, value }: { label: string; value: string | number | undefined }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ color: '#aaaaaa', fontSize: 12, marginBottom: 2 }}>{label}</div>
-      <div style={{ color: '#ffffff', fontSize: 14, fontFamily: '"Roboto Mono", monospace' }}>
-        {value ?? '-'}
-      </div>
-    </div>
-  );
-}
-
 export default function HostInfoPage() {
   const [hostInfo, setHostInfo] = useState<HostInfo | null>(null);
   const [loading, setLoading] = useState(true);

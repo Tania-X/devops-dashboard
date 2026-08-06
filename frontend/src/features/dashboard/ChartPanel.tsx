@@ -77,7 +77,10 @@ export default function ChartPanel({ config }: ChartPanelProps) {
               backgroundColor: 'rgba(0,0,0,0.8)',
               borderColor: '#333',
               textStyle: { color: '#ffffff' },
-              valueFormatter: (value: number) => Number(value).toFixed(1) + '%',
+              valueFormatter: (value: unknown) => {
+                const num = Number(value);
+                return Number.isFinite(num) ? num.toFixed(1) + '%' : String(value);
+              },
             },
             legend: {
               data: config.series.map((s) => s.name),

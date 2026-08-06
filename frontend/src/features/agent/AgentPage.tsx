@@ -144,7 +144,7 @@ export default function AgentPage() {
         title={<span style={{ color: '#fff', fontSize: 16 }}>Agent 分发目标</span>}
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchData()}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增目标</Button>
           </Space>
         }
@@ -169,7 +169,7 @@ export default function AgentPage() {
         okText="确认"
         cancelText="取消"
         styles={{
-          content: { background: '#1f1f1f' },
+          body: { background: '#1f1f1f' },
           header: { background: '#1f1f1f' },
         }}
       >

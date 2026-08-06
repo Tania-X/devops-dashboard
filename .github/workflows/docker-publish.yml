@@ -38,6 +38,16 @@ jobs:
             ghcr.io/${{ steps.meta.outputs.repo_lower }}/server:${{ steps.meta.outputs.version }}
             ghcr.io/${{ steps.meta.outputs.repo_lower }}/server:latest
 
+      - name: Build & Push Web (Frontend Nginx)
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.repo_lower }}/web:${{ steps.meta.outputs.version }}
+            ghcr.io/${{ steps.meta.outputs.repo_lower }}/web:latest
+
       - name: Build & Push Agent
         uses: docker/build-push-action@v6
         with:

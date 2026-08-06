@@ -70,7 +70,7 @@ function UserFormModal({ open, editingUser, onClose, onSuccess }: UserFormModalP
       okText="确认"
       cancelText="取消"
       styles={{
-        content: { background: '#1f1f1f' },
+        body: { background: '#1f1f1f' },
         header: { background: '#1f1f1f' },
       }}
     >
