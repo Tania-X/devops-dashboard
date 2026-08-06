@@ -1,24 +1,37 @@
 services:
+  # 前端：Nginx 托管静态产物 + 反代后端
+  web:
+    image: ${WEB_IMAGE:-devops-dashboard-web}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  # 后端：Go API + SQLite
   server:
-    # 生产环境：拉取 ghcr.io 镜像（需要先 docker login ghcr.io）
-    # 开发环境：直接 build（默认）
-    image: ${SERVER_IMAGE:-}
+    image: ${SERVER_IMAGE:-devops-dashboard-server}
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
     volumes:
       - ./backend/storage:/data
     environment:
       - PORT=8080
       - ENV=prod
+      - JWT_SECRET=${JWT_SECRET:-devops-dashboard-jwt-secret}
       - AGENT_HOSTS=${AGENT_HOSTS:-}
     restart: unless-stopped
+    # 不对外暴露端口，只通过 web 反代访问（如需直连可取消注释）
+    # ports:
+    #   - "8081:8080"
 
-  # 可选：在本地也起一个 agent 方便测试
+  # 可选：本地起一个 agent 方便测试
   agent:
-    image: ${AGENT_IMAGE:-}
+    image: ${AGENT_IMAGE:-devops-dashboard-agent}
     build:
       context: ./backend
       dockerfile: Dockerfile.agent
