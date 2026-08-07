@@ -152,9 +152,14 @@ go build -o server cmd/api/main.go
 
 #### 方式 A：Docker 部署（推荐）
 
+**开发模式（本地构建，默认）**：
+
 ```bash
-# 启动
+# 启动（本地 build 镜像）
 docker compose up -d
+
+# 改了代码要重新构建
+docker compose up -d --build
 
 # 查看日志
 docker compose logs -f
@@ -162,6 +167,16 @@ docker compose logs -f
 # 停止
 docker compose down
 ```
+
+**生产模式（拉取 ghcr.io 发布镜像）**：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+> 说明：`docker-compose.yml` 默认本地构建（开发用）；`docker-compose.prod.yml`
+> 用 `!reset null` 覆盖掉 build，改用 ghcr.io 发布的镜像（`build: !reset null` 是
+> Compose Spec 覆盖语法）。发布新版本时更新 `docker-compose.prod.yml` 里的镜像 tag。
 
 如果配置了 Agent 采集，启动时传入地址：
 
