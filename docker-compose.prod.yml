@@ -1,0 +1,20 @@
+# 生产环境覆盖文件：使用 ghcr.io 发布的镜像，不本地构建
+#
+# 用法（生产/外网部署）：
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# 或简化别名：
+#   docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/tania-x/devops-dashboard/web:0.2.1}
+    build: !reset null
+
+  server:
+    image: ${SERVER_IMAGE:-ghcr.io/tania-x/devops-dashboard/server:0.2.1}
+    build: !reset null
+
+  agent:
+    image: ${AGENT_IMAGE:-ghcr.io/tania-x/devops-dashboard/agent:0.2.1}
+    build: !reset null

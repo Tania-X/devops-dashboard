@@ -1,9 +1,7 @@
 services:
   # 前端：Nginx 托管静态产物 + 反代后端
   web:
-    # 生产默认拉 ghcr.io 镜像；本地开发想重新构建时：
-    #   WEB_IMAGE=devops-dashboard-web docker compose up -d --build
-    image: ${WEB_IMAGE:-ghcr.io/tania-x/devops-dashboard/web:0.2.1}
+    image: devops-dashboard-web
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -15,7 +13,7 @@ services:
 
   # 后端：Go API + SQLite
   server:
-    image: ${SERVER_IMAGE:-ghcr.io/tania-x/devops-dashboard/server:0.2.1}
+    image: devops-dashboard-server
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -33,7 +31,7 @@ services:
 
   # 可选：本地起一个 agent 方便测试
   agent:
-    image: ${AGENT_IMAGE:-ghcr.io/tania-x/devops-dashboard/agent:0.2.1}
+    image: devops-dashboard-agent
     build:
       context: ./backend
       dockerfile: Dockerfile.agent
