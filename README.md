@@ -174,6 +174,26 @@ AGENT_HOSTS=192.168.1.100:9100 docker compose up -d
 - SQLite 数据通过 `volumes` 挂载到 `backend/storage/`，容器销毁数据不丢
 - Agent **不放入 Docker**——Agent 需直接访问宿主机系统指标，应编译为裸 exe 在目标机器运行（见 `docs/build-deploy.md`）
 
+### CI/CD 发布流程
+
+代码推送后自动触发 CI（测试 + 构建产物），打 tag 触发 Docker 镜像构建并推送到 ghcr.io：
+
+```bash
+# 1. 推送代码（触发 CI 测试 + 构建，产出二进制与前端 dist）
+git push origin main
+
+# 2. 打版本 tag 并推送（触发 docker-publish，构建 server/web/agent 三个镜像推 ghcr.io）
+git tag v0.2.1
+git push origin v0.2.1
+```
+
+**版本号规则**：tag 一旦推送即不可变，失败后需递增小版本号（如 v0.2.1 → v0.2.2），不要删 tag 重打。
+
+**镜像产物**（ghcr.io/tania-x/devops-dashboard/）：
+- `server`：后端 API（Go + SQLite）
+- `web`：前端（Nginx + 静态产物 + /api 反代）
+- `agent`：监控采集代理
+
 #### 方式 B：直接运行
 
 ```bash
