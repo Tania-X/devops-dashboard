@@ -1,0 +1,11 @@
+bin
+storage
+*.exe
+*.db
+*.db-journal
+.git
+.gitignore
+Dockerfile
+Dockerfile.agent
+README.md
+docs
