@@ -84,6 +84,11 @@ func (h *Handler) SetupRouter() *gin.Engine {
 				admin.POST("/users", h.CreateUser)
 				admin.PUT("/users/:id", h.UpdateUser)
 				admin.DELETE("/users/:id", h.DeleteUser)
+
+				// 告警 Webhook 配置（仅管理员读写）
+				admin.GET("/settings/webhook", h.GetWebhookConfig)
+				admin.PUT("/settings/webhook", h.UpdateWebhookConfig)
+				admin.POST("/settings/webhook/test", h.TestWebhookConfig)
 			}
 		}
 	}

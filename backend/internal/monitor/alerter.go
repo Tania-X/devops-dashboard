@@ -16,6 +16,10 @@ type Alerter struct {
 	maxAlerts  int
 	prevStatus map[string]string // key: "cpu"|"memory"|"disk", value: "normal"|"warning"|"critical"
 	nextID     int
+
+	// OnAlert 可选回调：每条新告警产生时触发（用于 Webhook 推送等外部通知）
+	// 在 addAlert 内同步调用；回调应快速返回（如只做 channel 投递），不得阻塞
+	OnAlert func(model.AlertItem)
 }
 
 func NewAlerter() *Alerter {
@@ -85,6 +89,11 @@ func (a *Alerter) addAlert(level, message, metric string, value float64) {
 	a.alerts = append(a.alerts, entry)
 	if len(a.alerts) > a.maxAlerts {
 		a.alerts = a.alerts[len(a.alerts)-a.maxAlerts:]
+	}
+
+	// 触发外部通知回调（如 Webhook 推送）
+	if a.OnAlert != nil {
+		a.OnAlert(entry)
 	}
 }
 

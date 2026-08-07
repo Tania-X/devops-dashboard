@@ -38,6 +38,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		&model.DeploymentHistory{},
 		&model.AgentTarget{},
 		&model.User{},
+		&model.WebhookConfig{},
 	); err != nil {
 		return nil, fmt.Errorf("AutoMigrate 失败: %w", err)
 	}

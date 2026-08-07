@@ -15,6 +15,7 @@ import (
 	"github.com/Tania-X/devops-dashboard/backend/internal/api"
 	"github.com/Tania-X/devops-dashboard/backend/internal/config"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
+	"github.com/Tania-X/devops-dashboard/backend/internal/notify"
 	"github.com/Tania-X/devops-dashboard/backend/internal/repository"
 	"github.com/Tania-X/devops-dashboard/backend/internal/service"
 	"github.com/Tania-X/devops-dashboard/backend/pkg/seed"
@@ -66,6 +67,11 @@ func (a *App) Init() error {
 	alerter := monitor.NewAlerter()
 	slog.Info("告警引擎已启动", "maxAlerts", 20)
 
+	// 告警总线：Alerter 产生告警 → channel → Webhook 通知器（异步，不阻塞采集）
+	bus := notify.NewAlertBus()
+	bus.Run()
+	alerter.OnAlert = bus.Publish
+
 	a.history = monitor.NewHistory(retain, interval, alerter)
 	a.stopCh = a.history.StartCollector(interval)
 
@@ -78,7 +84,7 @@ func (a *App) Init() error {
 		slog.Info("使用本地采集模式（未配置 AGENT_HOSTS）")
 	}
 
-	a.services = service.NewServices(a.db, a.history, rc, alerter, a.cfg.JwtSecret, a.cfg.AgentSecretKey, a.cfg.AgentBinPath)
+	a.services = service.NewServices(a.db, a.history, rc, alerter, bus, a.cfg.JwtSecret, a.cfg.AgentSecretKey, a.cfg.AgentBinPath)
 
 	handler := api.NewHandler(a.services)
 	a.server = &http.Server{

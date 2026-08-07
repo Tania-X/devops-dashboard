@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/Tania-X/devops-dashboard/backend/internal/logs"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
+	"github.com/Tania-X/devops-dashboard/backend/internal/notify"
 	"gorm.io/gorm"
 )
 
@@ -18,6 +19,7 @@ type Services struct {
 	AgentService      *AgentService
 	AuthService       *AuthService
 	UserService       *UserService
+	WebhookManager    *WebhookManager
 }
 
 // HealthCheck 检查数据库连通性
@@ -32,7 +34,7 @@ func (s *Services) HealthCheck() (bool, error) {
 	return true, nil
 }
 
-func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter, jwtSecret string, agentSecretKey string, agentBinPath string) *Services {
+func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter, bus *notify.AlertBus, jwtSecret string, agentSecretKey string, agentBinPath string) *Services {
 	logReader := logs.NewReader("storage/logs/app.log")
 	return &Services{
 		db:                db,
@@ -44,5 +46,6 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 		AgentService:      NewAgentService(db, agentSecretKey, agentBinPath),
 		AuthService:       NewAuthService(db, jwtSecret),
 		UserService:       NewUserService(db),
+		WebhookManager:    NewWebhookManager(db, bus),
 	}
 }
