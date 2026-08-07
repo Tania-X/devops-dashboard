@@ -8,4 +8,4 @@ storage
 Dockerfile
 Dockerfile.agent
 README.md
-docs
+# 注意：docs/ 是 swag 生成的 Go 包（router.go 引用），不能排除！
