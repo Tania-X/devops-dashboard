@@ -296,7 +296,97 @@ paths:
               schema:
                 $ref: '#/components/schemas/HostInfo'
 
+  /api/settings/webhook:
+    get:
+      operationId: getWebhookConfig
+      summary: 获取告警 Webhook 配置
+      description: 返回当前告警推送配置（钉钉/企业微信机器人），secret 密钥不回传
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功返回 Webhook 配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      operationId: updateWebhookConfig
+      summary: 更新告警 Webhook 配置
+      description: 更新推送开关、渠道类型、Webhook 地址。保存后热生效（重建 Notifier）。
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookConfigUpdate'
+      responses:
+        '200':
+          description: 更新成功，返回最新配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookConfig'
+        '400':
+          description: 参数校验失败（URL 非法 / kind 不支持）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/settings/webhook/test:
+    post:
+      operationId: testWebhookConfig
+      summary: 发送测试告警到 Webhook
+      description: 按当前配置向目标 URL 发送一条测试告警消息，用于验证渠道连通性
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 测试消息已发送
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  detail:
+                    type: string
+                    description: 发送结果详情（HTTP 状态或错误信息）
+        '400':
+          description: 未配置 Webhook 或 URL 为空
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "登录后返回的 JWT Token，格式：Authorization: Bearer <token>"
+  responses:
+    Unauthorized:
+      description: 未认证或 Token 无效
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "unauthorized"
   schemas:
     # ---------- Dashboard ----------
     DashboardMetrics:
@@ -662,3 +752,49 @@ components:
           type: number
           description: 虚拟内存 / 交换分区总量 (GB)
           example: 4.0
+
+    # ---------- Settings / Webhook ----------
+    WebhookConfig:
+      type: object
+      required: [id, enabled, kind, url]
+      properties:
+        id:
+          type: integer
+          example: 1
+        enabled:
+          type: boolean
+          description: 推送开关
+          example: true
+        kind:
+          type: string
+          enum: [dingtalk, wecom]
+          description: 渠道类型：钉钉机器人 / 企业微信机器人
+          example: dingtalk
+        url:
+          type: string
+          description: 机器人 Webhook 地址
+          example: "https://oapi.dingtalk.com/robot/send?access_token=xxx"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WebhookConfigUpdate:
+      type: object
+      required: [enabled, kind, url]
+      properties:
+        enabled:
+          type: boolean
+          description: 推送开关
+        kind:
+          type: string
+          enum: [dingtalk, wecom]
+          description: 渠道类型
+        url:
+          type: string
+          description: 机器人 Webhook 地址（以 http/https 开头）
+        secret:
+          type: string
+          description: 加签密钥（可选，钉钉安全设置用；留空表示不修改）
