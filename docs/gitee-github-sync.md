@@ -65,3 +65,45 @@ Gitee 提供仓库镜像功能，推送到 Gitee 后自动同步到 GitHub。
 # 手动双推（需要 VPN 能连 GitHub）
 git push && git push github main
 ```
+
+---
+
+## GitHub 优先工作流(2026-08-08 起)
+
+> 背景：GitHub 关联了 CodeRabbit(AI 审核 PR)。日常开发切换到 GitHub 为主，
+> 采用 feature 分支 + PR 流程，合并后再同步 Gitee。
+
+### 一次性切换(当前目录直接加 remote，无需新建目录)
+
+```bash
+# 1. 添加 GitHub remote
+git remote add github https://github.com/Tania-X/devops-dashboard.git
+
+# 2. 先把本地 main 同步到 GitHub(保证 GitHub main 最新，含未推送 commit)
+git push github main
+
+# 3. 基于 GitHub main 建开发分支
+git fetch github
+git checkout -b feat/xxx github/main
+```
+
+### 日常开发流程
+
+```bash
+git push github feat/xxx       # 推送开发分支
+# → GitHub 上开 PR → CodeRabbit 自动 AI 审核 → 人工确认合并
+
+git checkout main
+git pull github main           # 合并后更新本地 main
+git push origin main           # 可选：同步回 Gitee(镜像/备份)
+```
+
+### Remote 约定
+
+| remote | 地址 | 角色 |
+|--------|------|------|
+| `origin` | Gitee | 备份 + 国内访问(保留) |
+| `github` | GitHub | **开发主线**，feature 分支与 PR 都在这里 |
+
+- 开发分支显式推 `github`；`main` 合并后按需回推 `origin` 保持 Gitee 同步
+- 原"Gitee 镜像自动同步"可保留，方向不变(Gitee → GitHub)，开发分支不受镜像影响

@@ -92,41 +92,69 @@ backend/internal/
 
 | 方案                | 说明                                                                                  | 适用场景             |
 | ----------------- | ----------------------------------------------------------------------------------- | ---------------- |
-| **Casbin**        | Go 最成熟授权库；PERM 元模型，支持 RBAC/ABAC/ACL；策略可存 DB/文件；gin 集成 `github.com/casbin/gin-authz` | 复杂授权需求、团队项目      |
-| **自研轻量 RBAC(推荐)** | `permissions` + `role_permissions` 表，权限点常量，启动加载内存 map，中间件 O(1) 查                    | 本项目：可控、教学价值高、零依赖 |
+| **Casbin(推荐)**   | Go 最成熟授权库；PERM 元模型，支持 RBAC/ABAC/ACL；策略可存 DB/文件；gin 集成 `github.com/casbin/gin-authz` | 复杂授权需求、团队项目      |
+| 自研轻量 RBAC        | `permissions` + `role_permissions` 表，权限点常量，启动加载内存 map，中间件 O(1) 查                    | 极简场景、零依赖偏好      |
 
-> 选择自研：项目权限模型简单(约 10 个权限点)，Casbin 的元模型/策略语言属于额外学习成本；自研约百行代码即可覆盖，且能清晰理解 RBAC 全貌。
+> 选择 Casbin(2026-08-08 用户评审决定)：生态成熟、社区方案完善，后续要扩展 ABAC/多租户无需重写；同时本项目的权限模型(约 6 个权限点)对 Casbin 属于轻量使用，接入成本可控。自研方案作废。
 
-### 2.4 自研方案设计
+### 2.4 Casbin 接入设计
 
-**数据模型：**
+**依赖：**
+
+- `github.com/casbin/casbin/v2` — 授权引擎
+- `github.com/casbin/gorm-adapter/v3` — 策略持久化到 SQLite(自动建 `casbin_rule` 表)
+- `github.com/casbin/gin-authz` — Gin 中间件(或自写轻量封装)
+
+**模型(model.conf,PERM 元模型 + RBAC)：**
+
+```ini
+[request_definition]
+r = sub, obj, act
+
+[policy_definition]
+p = sub, obj, act
+
+[role_definition]
+g = _, _
+
+[policy_effect]
+e = some(where (p.eft == allow))
+
+[matchers]
+m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+```
+
+**资源/动作约定(权限点映射)：**
+
+| 权限点              | obj    | act      | admin | viewer | operator |
+| ---------------- | ------ | -------- | ----- | ------ | -------- |
+| `dashboard:view` | dashboard | view   | ✅     | ✅      | ✅        |
+| `server:read`    | server    | read    | ✅     | ✅      | ✅        |
+| `agent:manage`   | agent     | manage  | ✅     | ❌      | ✅        |
+| `user:read`      | user      | read    | ✅     | ❌      | ❌        |
+| `user:write`     | user      | write   | ✅     | ❌      | ❌        |
+| `webhook:manage` | webhook   | manage  | ✅     | ❌      | ❌        |
+
+**策略 seed(启动写入 casbin_rule)：**
 
 ```
-users.role(string, 保留现状)         -- admin / viewer / operator...
-roles.id, roles.code, roles.name
-permissions.id, permissions.code     -- "user:read" / "agent:manage" ...
-role_permissions.role_id, role_id.permission_id
+p, admin,    *,        *          # admin 全通
+p, viewer,   dashboard, view
+p, viewer,   server,   read
+p, operator, dashboard, view
+p, operator, server,   read
+p, operator, agent,    manage
 ```
-
-**权限点清单(初稿)：**
-
-| 权限点              | 说明          | admin | viewer | operator |
-| ---------------- | ----------- | ----- | ------ | -------- |
-| `dashboard:view` | 查看仪表盘/趋势/告警 | ✅     | ✅      | ✅        |
-| `server:read`    | 查看服务器/日志/部署 | ✅     | ✅      | ✅        |
-| `agent:manage`   | 管理 Agent    | ✅     | ❌      | ✅        |
-| `user:read`      | 查看用户列表      | ✅     | ❌      | ❌        |
-| `user:write`     | 创建/编辑/删除用户  | ✅     | ❌      | ❌        |
-| `webhook:manage` | 配置 Webhook  | ✅     | ❌      | ❌        |
 
 **中间件设计：**
 
 ```go
-// authz 包：启动时加载 role → permissions map，HasPermission O(1) 查
-func RequirePermission(code string) gin.HandlerFunc {
+// authz 包：持有 enforcer，按 (obj, act) 授权
+func RequirePermission(obj, act string) gin.HandlerFunc {
     return func(c *gin.Context) {
         user := c.MustGet("currentUser").(*model.User)
-        if !authz.HasPermission(user.Role, code) {
+        ok, err := authz.Enforce(user.Role, obj, act)
+        if err != nil || !ok {
             ErrorJSON(c, http.StatusForbidden, "权限不足")
             c.Abort()
             return
@@ -139,12 +167,12 @@ func RequirePermission(code string) gin.HandlerFunc {
 **路由声明式标注：**
 
 ```go
-auth.GET("/users", h.GetUserList, RequirePermission("user:read"))
-auth.POST("/users", h.CreateUser, RequirePermission("user:write"))
-auth.POST("/agents", h.CreateAgent, RequirePermission("agent:manage"))
+auth.GET("/users", h.GetUserList, RequirePermission("user", "read"))
+auth.POST("/users", h.CreateUser, RequirePermission("user", "write"))
+auth.POST("/agents", h.CreateAgent, RequirePermission("agent", "manage"))
 ```
 
-**权限即时生效：** token 只携带 `sub`(用户 ID)+ `role`，服务端每次从内存角色-权限表查询 → 修改角色权限立即生效，无需重新登录。
+**权限即时生效：** token 只携带 `sub`(用户 ID)+ `role`，Enforcer 每次从策略存储(内存缓存 + DB)判定 → 策略变更后调用 `LoadPolicy()` 即时生效，无需重新登录。
 
 ### 2.5 与 DDD 的结合
 
@@ -154,9 +182,9 @@ auth.POST("/agents", h.CreateAgent, RequirePermission("agent:manage"))
 
 ### 2.6 待定问题
 
-- [x] 是否引入 Casbin(若后续权限复杂如 ABAC/多租户再升级)
-- [x] 角色是否可配置(需要前端管理界面？)
-- [x] 现有 viewer 角色保留为"只读"语义，是否拆分出 operator 中间角色
+- [x] 是否引入 Casbin → **引入**(2026-08-08 用户修正选择)
+- [x] 角色是否可配置(需要前端管理界面？) → 第一期不做，策略用代码 seed 预置
+- [x] 现有 viewer 角色保留为"只读"语义，是否拆分出 operator 中间角色 → 保留 viewer + 预置 operator
 
 ---
 
@@ -168,16 +196,16 @@ auth.POST("/agents", h.CreateAgent, RequirePermission("agent:manage"))
 
 | 步骤 | 内容 | 主要涉及 | 产出 |
 |------|------|----------|------|
-| **Step 1 RBAC 基础** | `authz` 包(权限点常量 + 角色权限映射)；`roles`/`permissions`/`role_permissions` 表与 seed 预置 | `internal/authz`、`repository/db.go` | 权限模型落地 |
-| **Step 2 RBAC 接入** | `RequirePermission(code)` 中间件替换 `AdminMiddleware`；路由声明式标注权限 | `api/middleware.go`、`api/router.go` | 路由权限声明化，admin 分组消除 |
+| **Step 1 Casbin 集成** | 引入 `casbin/v2` + `gorm-adapter/v3`；model.conf 定义；enforcer 初始化；策略 seed(admin/viewer/operator) | `internal/authz`、`app.go`、`go.mod` | Casbin 引擎就绪，策略落库 |
+| **Step 2 RBAC 接入** | `RequirePermission(obj, act)` 中间件(封装 enforcer)替换 `AdminMiddleware`；路由声明式标注权限 | `api/middleware.go`、`api/router.go` | 路由权限声明化，admin 分组消除 |
 | **Step 3 DDD 拆包** | `internal/agent/` 上下文独立；本体内部按 domain/service/api 分层 | `internal/` 目录结构 | 限界上下文隔离，各自演进 |
 | **Step 4 User 充血** | `domain.User`(私有 `passwordHash` + `SetPassword`/`VerifyPassword`/`ChangeRole`) + `NewUser` 工厂；service 变薄；`Role` 值对象 | `model/user.go`、`service/user.go` | 贫血模型消除，行为内聚 |
 | **Step 5 回归验证** | go build/vet/test + API 冒烟 + Playwright 回归(`create-viewer-user.spec.ts`) | 全链路 | 行为不变，无回归 |
 
 ### 3.2 待定问题决定(2026-08-08 用户评审)
 
-- [x] **不引入 Casbin**，自研轻量 RBAC(权限点驱动 + 内存映射)
-- [x] **第一期不做角色管理前端界面**：角色-权限映射用代码常量 + DB seed 预置，后续需要再加配置界面
+- [x] **引入 Casbin**(用户修正选择，自研方案作废)
+- [x] **第一期不做角色管理前端界面**：策略用代码 seed 预置到 `casbin_rule` 表，后续需要再加配置界面
 - [x] **保留 viewer(只读)**，新增预置 `operator` 中间角色(可管理 Agent，不可管理用户/Webhook)
 
 ### 3.3 验收标准
