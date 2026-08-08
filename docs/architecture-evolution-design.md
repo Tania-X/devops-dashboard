@@ -174,17 +174,43 @@ auth.POST("/agents", h.CreateAgent, RequirePermission("agent", "manage"))
 
 **权限即时生效：** token 只携带 `sub`(用户 ID)+ `role`，Enforcer 每次从策略存储(内存缓存 + DB)判定 → 策略变更后调用 `LoadPolicy()` 即时生效，无需重新登录。
 
-### 2.5 与 DDD 的结合
+### 2.5 按钮级权限(前端 UX 控制)
+
+> 原则：按钮级控制是**体验层(前端)**，接口级校验是**安全边界(后端)**——按钮隐藏不等于接口安全，接口仍由 Casbin 强制校验(纵深防御)。前端权限只为"不该看到的不显示"。
+
+1. **权限点细化**(敏感操作独立权限点，Casbin 中即 `obj + act` 组合)：
+
+| 权限点 | 控制的按钮 | admin | viewer | operator |
+|--------|-----------|-------|--------|----------|
+| `user:read` / `user:create` / `user:update` / `user:delete` | 用户页 查看/新增/编辑/删除 | ✅ | ❌ | ❌ |
+| `agent:read` / `agent:create` / `agent:update` / `agent:delete` / `agent:deploy` / `agent:stop` | Agent 页 各操作按钮 | ✅ | ❌ | ✅ |
+| `webhook:read` / `webhook:update` / `webhook:test` | 设置页 查看/保存/测试 | ✅ | ❌ | ❌ |
+| `dashboard:view` / `server:read` / `log:read` / `deployment:read` | 只读页面(无按钮) | ✅ | ✅ | ✅ |
+
+2. **前端获取权限**：`GET /api/auth/me` 返回 `permissions: string[]`(登录时由 Casbin 按角色计算该用户拥有的全部权限点)——单一事实源在后端。
+
+3. **前端实现**：
+
+```tsx
+// AuthProvider 保存 permissions
+const can = usePermission('user:delete');        // hook → boolean
+<AuthButton perm="user:delete">删除</AuthButton> // 无权限则不渲染(可扩展为禁用+提示)
+```
+
+4. **后端路由仍 `RequirePermission(obj, act)` 校验**——前端只做展示控制，安全永远在后端。
+
+### 2.6 与 DDD 的结合
 
 - `Role` 作为值对象/实体，`User.ChangeRole` 校验角色合法性
 - 权限模型在 domain 层建模(roles/permissions 聚合)，infrastructure 持久化
 - 依赖方向：HTTP → 应用服务 → 领域(authz 判断可下沉为领域服务)
 
-### 2.6 待定问题
+### 2.7 待定问题
 
 - [x] 是否引入 Casbin → **引入**(2026-08-08 用户修正选择)
 - [x] 角色是否可配置(需要前端管理界面？) → 第一期不做，策略用代码 seed 预置
 - [x] 现有 viewer 角色保留为"只读"语义，是否拆分出 operator 中间角色 → 保留 viewer + 预置 operator
+- [ ] 按钮级权限点列表由后端 `/auth/me` 计算返回 → 建议采用(单一事实源)，待确认
 
 ---
 
