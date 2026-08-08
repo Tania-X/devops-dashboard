@@ -6,13 +6,15 @@
 
 ## 一、工作流约束（硬性）
 
-### 1.1 禁止自动 Commit / Push
+### 1.1 提交策略：自动 Commit，不 Push
 
-**除非用户显式说明"commit"、"push"或"提交"等指令，否则 Agent 不得执行任何 `git add`、`git commit`、`git push` 操作。**
+**每次代码修改完成后，Agent 应主动执行 `git add` + `git commit`（本地提交，遵循 1.2 的格式），但严禁执行 `git push`。**
 
-- 可以编写 commit message 草稿供用户审阅
-- 可以提示用户"变更已就绪，是否需要提交？"
-- 不得在未经确认的情况下将代码推送到远程仓库
+- ✅ 修改完成后主动 commit，commit message 遵循 1.2 节格式
+- ✅ 可拆分为多个语义独立的 commit（如 fix / docs / test 分开）
+- ❌ **禁止 `git push`** — push 由用户本人检查确认后自行执行
+- 若 commit 有误或需要调整，用户会告知，继续排查修复即可（可追加新的 commit，不强制 amend）
+- 变更背景：2026-08-08 用户调整策略（原为"未经确认不得 commit"）
 
 ### 1.2 Commit Message 格式
 
