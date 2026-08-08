@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/api"
+	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/config"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
 	"github.com/Tania-X/devops-dashboard/backend/internal/notify"
@@ -53,6 +54,11 @@ func (a *App) Init() error {
 	a.db = db
 
 	seed.SeedIfNeeded(a.db)
+
+	// Casbin 授权引擎初始化：加载 PERM 模型 + 策略 seed（admin/viewer/operator 预置）
+	if err := authz.Init(a.db); err != nil {
+		return fmt.Errorf("init authz failed: %w", err)
+	}
 
 	retain, err := time.ParseDuration(a.cfg.HistoryRetain)
 	if err != nil {

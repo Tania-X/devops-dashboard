@@ -76,10 +76,13 @@ g = _, _
 e = some(where (p.eft == allow))
 
 [matchers]
-m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+m = g(r.sub, p.sub) && keyMatch(r.obj, p.obj) && keyMatch(r.act, p.act)
 ```
 
-> `p, admin, *, *` 通配策略实现 admin 全通（matcher 中 `*` 匹配任意值）。
+> ⚠️ **踩坑记录（2026-08-08 实施时发现）**：
+> - policy 里的 `*`（如 `p, admin, *, *`）**不是通配符**，字面比较 `r.obj == p.obj` 永远匹配不上；必须用 Casbin 内置函数 `keyMatch`（支持 `*` 通配）才能实现 admin 全通
+> - 模型内容用 `model.NewModelFromString(modelText)` 加载（`NewEnforcer` 第一参是**文件路径**，不能直接传字符串）
+> - `gorm-adapter/v3` 需使用 **v3.14.x**（适配 casbin/v2）；最新 v3.41.0 已切到 casbin/v3 接口（`missing method LoadPolicy` panic）
 
 ---
 
