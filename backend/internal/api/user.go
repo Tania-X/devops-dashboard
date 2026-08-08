@@ -17,16 +17,16 @@ func (h *Handler) GetUserList(c *gin.Context) {
 }
 
 func (h *Handler) CreateUser(c *gin.Context) {
-	var user model.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var req model.CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
 	}
-	if user.Username == "" || user.Password == "" {
-		ErrorJSON(c, http.StatusBadRequest, "用户名和密码不能为空")
-		return
-	}
-	result, err := h.services.UserService.Create(user)
+	result, err := h.services.UserService.Create(model.User{
+		Username: req.Username,
+		Password: req.Password,
+		Role:     req.Role,
+	})
 	if err != nil {
 		ErrorJSON(c, http.StatusInternalServerError, err.Error())
 		return
@@ -36,12 +36,12 @@ func (h *Handler) CreateUser(c *gin.Context) {
 
 func (h *Handler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var user model.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var req model.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
 	}
-	result, err := h.services.UserService.Update(id, user)
+	result, err := h.services.UserService.Update(id, model.User{Role: req.Role, Password: req.Password})
 	if err != nil {
 		ErrorJSON(c, http.StatusInternalServerError, err.Error())
 		return

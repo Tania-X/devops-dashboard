@@ -13,3 +13,11 @@ type WebhookConfig struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+// UpdateWebhookConfigRequest 更新 Webhook 配置入参（secret 留空表示不修改）
+type UpdateWebhookConfigRequest struct {
+	Enabled bool   `json:"enabled"`
+	Kind    string `json:"kind"`
+	URL     string `json:"url"`
+	Secret  string `json:"secret"`
+}

@@ -22,9 +22,6 @@ func (s *UserService) List() ([]model.User, error) {
 	if err := s.db.Order("created_at DESC").Find(&users).Error; err != nil {
 		return nil, err
 	}
-	for i := range users {
-		users[i].Password = ""
-	}
 	return users, nil
 }
 
@@ -49,7 +46,7 @@ func (s *UserService) Update(id string, user model.User) (*model.User, error) {
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
-	existing.Username = user.Username
+	// 用户名不可修改（前端编辑表单 username 为 disabled，请求 DTO 不含该字段）
 	existing.Role = user.Role
 	existing.UpdatedAt = time.Now()
 	if user.Password != "" {

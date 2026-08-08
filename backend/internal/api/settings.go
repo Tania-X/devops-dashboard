@@ -15,21 +15,26 @@ func (h *Handler) GetWebhookConfig(c *gin.Context) {
 
 // UpdateWebhookConfig 更新告警 Webhook 配置（仅管理员），保存后热生效
 func (h *Handler) UpdateWebhookConfig(c *gin.Context) {
-	var input model.WebhookConfig
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var req model.UpdateWebhookConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
 	}
-	if input.URL == "" {
+	if req.URL == "" {
 		ErrorJSON(c, http.StatusBadRequest, "Webhook 地址不能为空")
 		return
 	}
-	if input.Kind != "dingtalk" && input.Kind != "wecom" {
+	if req.Kind != "dingtalk" && req.Kind != "wecom" {
 		ErrorJSON(c, http.StatusBadRequest, "渠道类型仅支持 dingtalk 或 wecom")
 		return
 	}
 
-	cfg, err := h.services.WebhookManager.Update(input)
+	cfg, err := h.services.WebhookManager.Update(model.WebhookConfig{
+		Enabled: req.Enabled,
+		Kind:    req.Kind,
+		URL:     req.URL,
+		Secret:  req.Secret,
+	})
 	if err != nil {
 		ErrorJSON(c, http.StatusBadRequest, err.Error())
 		return
