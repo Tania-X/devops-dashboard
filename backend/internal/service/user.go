@@ -22,6 +22,9 @@ func (s *UserService) List() ([]model.User, error) {
 	if err := s.db.Order("created_at DESC").Find(&users).Error; err != nil {
 		return nil, err
 	}
+	for i := range users {
+		users[i].Password = ""
+	}
 	return users, nil
 }
 
