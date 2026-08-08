@@ -1,7 +1,7 @@
 # 架构演进设计(DDD 演进 + RBAC 权限)
 
-> 状态：设计稿(DDD 部分方向已确认,RBAC 部分待评审)
-> 创建：2026-08-08
+> 状态：设计稿(DDD 部分方向已确认,RBAC 部分待评审)  
+> 创建：2026-08-08  
 > 技术栈：Go 后端(gin + GORM + SQLite)
 
 ---
@@ -17,11 +17,11 @@
 
 ### 1.2 设计决策：渐进式 DDD
 
-| 阶段 | 内容 | 成本 | 时机 |
-|------|------|------|------|
-| ① 边界 + 充血 | 按限界上下文拆包；User 等实体改充血模型 | 低 | **现在可做** |
-| ② 仓储接口 | domain 定义 Repository 接口，infrastructure 用 GORM 实现 | 中 | 业务复杂化后 |
-| ③ 完整战术 DDD | 聚合、防腐层、领域事件、CQRS | 高 | 暂不做(过度设计) |
+| 阶段         | 内容                                               | 成本 | 时机        |
+| ---------- | ------------------------------------------------ | -- | --------- |
+| ① 边界 + 充血  | 按限界上下文拆包；User 等实体改充血模型                           | 低  | **现在可做**  |
+| ② 仓储接口     | domain 定义 Repository 接口，infrastructure 用 GORM 实现 | 中  | 业务复杂化后    |
+| ③ 完整战术 DDD | 聚合、防腐层、领域事件、CQRS                                 | 高  | 暂不做(过度设计) |
 
 > 当前规模(5 model / 12 API)配全量 DDD 属于过度设计；阶段 ① 消除真实的贫血反模式，且不引入额外抽象成本。
 
@@ -90,10 +90,10 @@ backend/internal/
 
 ### 2.3 方案对比
 
-| 方案 | 说明 | 适用场景 |
-|------|------|----------|
-| **Casbin** | Go 最成熟授权库；PERM 元模型，支持 RBAC/ABAC/ACL；策略可存 DB/文件；gin 集成 `github.com/casbin/gin-authz` | 复杂授权需求、团队项目 |
-| **自研轻量 RBAC(推荐)** | `permissions` + `role_permissions` 表，权限点常量，启动加载内存 map，中间件 O(1) 查 | 本项目：可控、教学价值高、零依赖 |
+| 方案                | 说明                                                                                  | 适用场景             |
+| ----------------- | ----------------------------------------------------------------------------------- | ---------------- |
+| **Casbin**        | Go 最成熟授权库；PERM 元模型，支持 RBAC/ABAC/ACL；策略可存 DB/文件；gin 集成 `github.com/casbin/gin-authz` | 复杂授权需求、团队项目      |
+| **自研轻量 RBAC(推荐)** | `permissions` + `role_permissions` 表，权限点常量，启动加载内存 map，中间件 O(1) 查                    | 本项目：可控、教学价值高、零依赖 |
 
 > 选择自研：项目权限模型简单(约 10 个权限点)，Casbin 的元模型/策略语言属于额外学习成本；自研约百行代码即可覆盖，且能清晰理解 RBAC 全貌。
 
@@ -110,14 +110,14 @@ role_permissions.role_id, role_id.permission_id
 
 **权限点清单(初稿)：**
 
-| 权限点 | 说明 | admin | viewer | operator |
-|--------|------|-------|--------|----------|
-| `dashboard:view` | 查看仪表盘/趋势/告警 | ✅ | ✅ | ✅ |
-| `server:read` | 查看服务器/日志/部署 | ✅ | ✅ | ✅ |
-| `agent:manage` | 管理 Agent | ✅ | ❌ | ✅ |
-| `user:read` | 查看用户列表 | ✅ | ❌ | ❌ |
-| `user:write` | 创建/编辑/删除用户 | ✅ | ❌ | ❌ |
-| `webhook:manage` | 配置 Webhook | ✅ | ❌ | ❌ |
+| 权限点              | 说明          | admin | viewer | operator |
+| ---------------- | ----------- | ----- | ------ | -------- |
+| `dashboard:view` | 查看仪表盘/趋势/告警 | ✅     | ✅      | ✅        |
+| `server:read`    | 查看服务器/日志/部署 | ✅     | ✅      | ✅        |
+| `agent:manage`   | 管理 Agent    | ✅     | ❌      | ✅        |
+| `user:read`      | 查看用户列表      | ✅     | ❌      | ❌        |
+| `user:write`     | 创建/编辑/删除用户  | ✅     | ❌      | ❌        |
+| `webhook:manage` | 配置 Webhook  | ✅     | ❌      | ❌        |
 
 **中间件设计：**
 
@@ -154,13 +154,48 @@ auth.POST("/agents", h.CreateAgent, RequirePermission("agent:manage"))
 
 ### 2.6 待定问题
 
-- [ ] 是否引入 Casbin(若后续权限复杂如 ABAC/多租户再升级)
-- [ ] 角色是否可配置(需要前端管理界面？)
-- [ ] 现有 viewer 角色保留为"只读"语义，是否拆分出 operator 中间角色
+- [x] 是否引入 Casbin(若后续权限复杂如 ABAC/多租户再升级)
+- [x] 角色是否可配置(需要前端管理界面？)
+- [x] 现有 viewer 角色保留为"只读"语义，是否拆分出 operator 中间角色
 
 ---
 
-## 三、相关文档
+## 三、实施计划(RBAC + DDD 合并路线)
+
+### 3.1 执行顺序与依赖
+
+先后顺序依据：RBAC 是横切改动(middleware/router)，DDD 拆包同样会动 router 的 import 路径 → **先 RBAC 后 DDD**，拆包时只改路径不改逻辑，返工最小；User 充血模型在 RBAC 之后做，顺手把 Role 抽象为值对象，两个方向自然衔接。
+
+| 步骤 | 内容 | 主要涉及 | 产出 |
+|------|------|----------|------|
+| **Step 1 RBAC 基础** | `authz` 包(权限点常量 + 角色权限映射)；`roles`/`permissions`/`role_permissions` 表与 seed 预置 | `internal/authz`、`repository/db.go` | 权限模型落地 |
+| **Step 2 RBAC 接入** | `RequirePermission(code)` 中间件替换 `AdminMiddleware`；路由声明式标注权限 | `api/middleware.go`、`api/router.go` | 路由权限声明化，admin 分组消除 |
+| **Step 3 DDD 拆包** | `internal/agent/` 上下文独立；本体内部按 domain/service/api 分层 | `internal/` 目录结构 | 限界上下文隔离，各自演进 |
+| **Step 4 User 充血** | `domain.User`(私有 `passwordHash` + `SetPassword`/`VerifyPassword`/`ChangeRole`) + `NewUser` 工厂；service 变薄；`Role` 值对象 | `model/user.go`、`service/user.go` | 贫血模型消除，行为内聚 |
+| **Step 5 回归验证** | go build/vet/test + API 冒烟 + Playwright 回归(`create-viewer-user.spec.ts`) | 全链路 | 行为不变，无回归 |
+
+### 3.2 待定问题决定(2026-08-08 用户评审)
+
+- [x] **不引入 Casbin**，自研轻量 RBAC(权限点驱动 + 内存映射)
+- [x] **第一期不做角色管理前端界面**：角色-权限映射用代码常量 + DB seed 预置，后续需要再加配置界面
+- [x] **保留 viewer(只读)**，新增预置 `operator` 中间角色(可管理 Agent，不可管理用户/Webhook)
+
+### 3.3 验收标准
+
+1. 所有现有 API 行为不变：admin 全通、viewer 只读语义不倒退
+2. 新增 `operator` 角色可管理 Agent，访问用户/Webhook 接口返回 403
+3. User 实体行为内聚，service 无业务规则残留(不再有 bcrypt/uuid 逻辑)
+4. go build/vet/test 全过；Playwright 回归(创建观察者用户)通过
+
+### 3.4 里程碑
+
+- **M1(RBAC 可用)**：Step 1-2 完成，`RequirePermission` 全量替换
+- **M2(DDD 阶段①)**：Step 3-4 完成，限界上下文拆分 + User 充血
+- **M3(验收)**：Step 5 完成，回归通过，更新 `architecture.md`/`development-guide.md`
+
+---
+
+## 四、相关文档
 
 - [架构总览](architecture.md) — 当前分层与决策
 - [开发指南](development-guide.md) — 路线图(Phase 3/4/5)
