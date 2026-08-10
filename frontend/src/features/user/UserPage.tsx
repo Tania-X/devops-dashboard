@@ -8,11 +8,13 @@ import { usePermission } from '../../hooks/usePermission';
 
 const roleColorMap: Record<string, string> = {
   admin: '#534AB7',
+  operator: '#177ddc',
   viewer: '#888780',
 };
 
 const roleLabelMap: Record<string, string> = {
   admin: '管理员',
+  operator: '运维',
   viewer: '观察者',
 };
 
@@ -84,7 +86,11 @@ function UserFormModal({ open, editingUser, onClose, onSuccess }: UserFormModalP
           <Input.Password autoComplete="new-password" placeholder={editingUser ? '留空则不修改' : ''} />
         </Form.Item>
         <Form.Item name="role" label="角色" rules={[{ required: true, message: '请选择角色' }]}>
-          <Select options={[{ label: '管理员', value: 'admin' }, { label: '观察者', value: 'viewer' }]} />
+          <Select options={[
+            { label: '管理员', value: 'admin' },
+            { label: '运维', value: 'operator' },
+            { label: '观察者', value: 'viewer' },
+          ]} />
         </Form.Item>
       </Form>
     </Modal>
