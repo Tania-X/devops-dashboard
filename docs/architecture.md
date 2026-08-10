@@ -444,6 +444,19 @@ RBAC 是横切改动（middleware/router），DDD 拆包同样会动 router 的 
 - **M2（DDD 阶段①）**：Step 3-4 完成，限界上下文拆分 + User 充血
 - **M3（验收）**：Step 5 完成，回归通过，更新 `development-guide.md`
 
+### 9.5 二期规划：角色权限配置页面（暂缓，2026-08-10 用户确认）
+
+> 现状：策略由代码 `rolePolicies()` seed 预置，改权限需改代码 + 重启。
+> 二期目标：前端可视化配置角色权限，热生效。Casbin 架构已预留此能力（策略在 DB + `Reload()`），无需改动判断链路。
+
+| 项 | 设计要点 |
+|----|----------|
+| 后端 | `GET/PUT /api/settings/roles`、`GET/PUT /api/settings/policies`（仅 admin，权限点如 `settings:manage`）；写操作执行 `AddPolicy/RemovePolicy` + `Reload()` 热生效，无需重新登录 |
+| 前端 | 设置页新增"角色权限"Tab：角色 × 权限点矩阵，勾选保存（AntD Table + Checkbox） |
+| 权限点 | 复用 §8.4/§8.5 权限点清单（`obj:act`），前端矩阵按权限点渲染 |
+| 前置 | Step 2（RequirePermission 全量接入）完成；Phase 3 前端工程化（可选） |
+| 状态 | **暂缓**——单人项目 + 角色固定，当前代码 seed 足够；出现"自定义角色"需求时启动 |
+
 ---
 
 ## 十、相关文档
