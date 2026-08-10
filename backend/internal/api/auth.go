@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/gin-gonic/gin"
 )
@@ -27,7 +28,17 @@ func (h *Handler) GetMe(c *gin.Context) {
 		ErrorJSON(c, http.StatusUnauthorized, "未登录")
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	u, ok := user.(*model.User)
+	if !ok {
+		ErrorJSON(c, http.StatusInternalServerError, "用户信息异常")
+		return
+	}
+	permissions, err := authz.PermissionsOf(u.Role)
+	if err != nil {
+		ErrorJSON(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, model.MeResponse{User: *u, Permissions: permissions})
 }
 
 func (h *Handler) Logout(c *gin.Context) {

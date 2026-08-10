@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -32,7 +33,13 @@ func (s *AuthService) Login(username, password string) (*model.LoginResponse, er
 		return nil, err
 	}
 	user.Password = ""
-	return &model.LoginResponse{Token: token, User: user}, nil
+
+	// 计算该角色拥有的权限点，供前端按钮级控制
+	permissions, err := authz.PermissionsOf(user.Role)
+	if err != nil {
+		return nil, err
+	}
+	return &model.LoginResponse{Token: token, User: user, Permissions: permissions}, nil
 }
 
 func (s *AuthService) ValidateToken(tokenString string) (*model.User, error) {

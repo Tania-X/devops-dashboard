@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/gin-gonic/gin"
 )
@@ -37,21 +38,25 @@ func (h *Handler) AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func (h *Handler) AdminMiddleware() gin.HandlerFunc {
+// RequirePermission 权限校验中间件：校验当前登录用户角色是否拥有 (obj, act) 权限。
+// 取代原来的 AdminMiddleware——权限点驱动，支持任意角色（admin/viewer/operator...）。
+func RequirePermission(obj, act string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if h.services.AuthService == nil {
-			c.Next()
-			return
-		}
 		user, exists := c.Get("currentUser")
 		if !exists {
-			ErrorJSON(c, http.StatusForbidden, "需要管理员权限")
+			ErrorJSON(c, http.StatusUnauthorized, "未认证")
 			c.Abort()
 			return
 		}
 		u, ok := user.(*model.User)
-		if !ok || u.Role != "admin" {
-			ErrorJSON(c, http.StatusForbidden, "需要管理员权限")
+		if !ok {
+			ErrorJSON(c, http.StatusForbidden, "权限不足")
+			c.Abort()
+			return
+		}
+		allowed, err := authz.HasPermission(u.Role, obj, act)
+		if err != nil || !allowed {
+			ErrorJSON(c, http.StatusForbidden, "权限不足")
 			c.Abort()
 			return
 		}

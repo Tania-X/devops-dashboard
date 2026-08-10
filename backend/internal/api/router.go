@@ -61,35 +61,31 @@ func (h *Handler) SetupRouter() *gin.Engine {
 		api.POST("/auth/login", h.Login)
 		api.POST("/auth/logout", h.Logout)
 
-		// 需要认证的路由
+		// 需要认证的路由（权限点驱动：每个路由标注 RequirePermission(obj, act)）
 		auth := api.Group("")
 		auth.Use(h.AuthMiddleware())
 		{
 			auth.GET("/auth/me", h.GetMe)
 
-			// Agent 管理路由
-			auth.GET("/agents", h.GetAgentList)
-			auth.POST("/agents", h.CreateAgent)
-			auth.PUT("/agents/:id", h.UpdateAgent)
-			auth.DELETE("/agents/:id", h.DeleteAgent)
-			auth.POST("/agents/:id/deploy", h.DeployAgent)
-			auth.POST("/agents/:id/stop", h.StopAgent)
-			auth.GET("/agents/:id/status", h.CheckAgentStatus)
+			// Agent 管理路由（admin / operator）
+			auth.GET("/agents", RequirePermission("agent", "read"), h.GetAgentList)
+			auth.POST("/agents", RequirePermission("agent", "create"), h.CreateAgent)
+			auth.PUT("/agents/:id", RequirePermission("agent", "update"), h.UpdateAgent)
+			auth.DELETE("/agents/:id", RequirePermission("agent", "delete"), h.DeleteAgent)
+			auth.POST("/agents/:id/deploy", RequirePermission("agent", "deploy"), h.DeployAgent)
+			auth.POST("/agents/:id/stop", RequirePermission("agent", "stop"), h.StopAgent)
+			auth.GET("/agents/:id/status", RequirePermission("agent", "read"), h.CheckAgentStatus)
 
-			// 用户管理路由（仅管理员）
-			admin := auth.Group("")
-			admin.Use(h.AdminMiddleware())
-			{
-				admin.GET("/users", h.GetUserList)
-				admin.POST("/users", h.CreateUser)
-				admin.PUT("/users/:id", h.UpdateUser)
-				admin.DELETE("/users/:id", h.DeleteUser)
+			// 用户管理路由（仅 admin）
+			auth.GET("/users", RequirePermission("user", "read"), h.GetUserList)
+			auth.POST("/users", RequirePermission("user", "create"), h.CreateUser)
+			auth.PUT("/users/:id", RequirePermission("user", "update"), h.UpdateUser)
+			auth.DELETE("/users/:id", RequirePermission("user", "delete"), h.DeleteUser)
 
-				// 告警 Webhook 配置（仅管理员读写）
-				admin.GET("/settings/webhook", h.GetWebhookConfig)
-				admin.PUT("/settings/webhook", h.UpdateWebhookConfig)
-				admin.POST("/settings/webhook/test", h.TestWebhookConfig)
-			}
+			// 告警 Webhook 配置（仅 admin）
+			auth.GET("/settings/webhook", RequirePermission("webhook", "read"), h.GetWebhookConfig)
+			auth.PUT("/settings/webhook", RequirePermission("webhook", "update"), h.UpdateWebhookConfig)
+			auth.POST("/settings/webhook/test", RequirePermission("webhook", "test"), h.TestWebhookConfig)
 		}
 	}
 	r.NoRoute(func(c *gin.Context) {
