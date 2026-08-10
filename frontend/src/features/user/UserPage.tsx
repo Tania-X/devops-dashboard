@@ -3,6 +3,8 @@ import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, message, P
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { UserItem } from '../../api/model';
+import AuthButton from '../../components/AuthButton';
+import { usePermission } from '../../hooks/usePermission';
 
 const roleColorMap: Record<string, string> = {
   admin: '#534AB7',
@@ -94,6 +96,7 @@ export default function UserPage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
+  const canDelete = usePermission('user:delete');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -149,10 +152,12 @@ export default function UserPage() {
       key: 'actions',
       render: (_: unknown, record: UserItem) => (
         <Space size="small">
-          <Button size="small" onClick={() => openEdit(record)}>编辑</Button>
-          <Popconfirm title="确定删除该用户?" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger>删除</Button>
-          </Popconfirm>
+          <AuthButton perm="user:update" size="small" onClick={() => openEdit(record)}>编辑</AuthButton>
+          {canDelete && (
+            <Popconfirm title="确定删除该用户?" onConfirm={() => handleDelete(record.id)}>
+              <Button size="small" danger>删除</Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -165,7 +170,7 @@ export default function UserPage() {
         extra={
           <Space>
             <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增用户</Button>
+            <AuthButton perm="user:create" type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增用户</AuthButton>
           </Space>
         }
         style={{ background: '#1f1f1f', border: '1px solid #333' }}
