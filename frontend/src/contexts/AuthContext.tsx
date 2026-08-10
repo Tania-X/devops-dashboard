@@ -9,6 +9,7 @@ interface User {
 interface AuthContextType {
   token: string | null;
   user: User | null;
+  permissions: string[]; // 当前用户权限点列表(登录时后端计算,用于按钮级控制)
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -21,6 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('user');
     return stored ? JSON.parse(stored) : null;
+  });
+  const [permissions, setPermissions] = useState<string[]>(() => {
+    const stored = localStorage.getItem('permissions');
+    return stored ? JSON.parse(stored) : [];
   });
 
   const login = useCallback(async (username: string, password: string) => {
@@ -36,19 +41,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('permissions', JSON.stringify(data.permissions ?? []));
     setToken(data.token);
     setUser(data.user);
+    setPermissions(data.permissions ?? []);
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('permissions');
     setToken(null);
     setUser(null);
+    setPermissions([]);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ token, user, permissions, login, logout, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

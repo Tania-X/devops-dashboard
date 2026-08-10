@@ -32,6 +32,13 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
+	Token       string   `json:"token"`
+	User        User     `json:"user"`
+	Permissions []string `json:"permissions"` // 当前用户拥有的权限点（前端按钮级控制）
+}
+
+// MeResponse 当前登录用户信息 + 权限点
+type MeResponse struct {
+	User        User     `json:"user"`
+	Permissions []string `json:"permissions"`
 }

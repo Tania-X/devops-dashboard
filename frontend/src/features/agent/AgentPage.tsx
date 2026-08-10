@@ -3,6 +3,8 @@ import { Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Car
 import { PlusOutlined, ReloadOutlined, CloudUploadOutlined, StopOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { AgentTarget } from '../../api/model';
+import AuthButton from '../../components/AuthButton';
+import { usePermission } from '../../hooks/usePermission';
 
 const statusColorMap: Record<string, string> = {
   online: '#73bf69',
@@ -24,6 +26,8 @@ export default function AgentPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AgentTarget | null>(null);
   const [form] = Form.useForm();
+  const canStop = usePermission('agent:stop');
+  const canDelete = usePermission('agent:delete');
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -125,14 +129,18 @@ export default function AgentPage() {
       key: 'actions',
       render: (_: unknown, record: AgentTarget) => (
         <Space size="small">
-          <Button size="small" onClick={() => openEdit(record)}>编辑</Button>
-          <Button size="small" icon={<CloudUploadOutlined />} onClick={() => handleDeploy(record.id)}>部署</Button>
-          <Popconfirm title="确定停止该 Agent?" onConfirm={() => handleStop(record.id)}>
-            <Button size="small" danger icon={<StopOutlined />}>停止</Button>
-          </Popconfirm>
-          <Popconfirm title="确定删除?" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger>删除</Button>
-          </Popconfirm>
+          <AuthButton perm="agent:update" size="small" onClick={() => openEdit(record)}>编辑</AuthButton>
+          <AuthButton perm="agent:deploy" size="small" icon={<CloudUploadOutlined />} onClick={() => handleDeploy(record.id)}>部署</AuthButton>
+          {canStop && (
+            <Popconfirm title="确定停止该 Agent?" onConfirm={() => handleStop(record.id)}>
+              <Button size="small" danger icon={<StopOutlined />}>停止</Button>
+            </Popconfirm>
+          )}
+          {canDelete && (
+            <Popconfirm title="确定删除?" onConfirm={() => handleDelete(record.id)}>
+              <Button size="small" danger>删除</Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -145,7 +153,7 @@ export default function AgentPage() {
         extra={
           <Space>
             <Button icon={<ReloadOutlined />} onClick={() => fetchData()}>刷新</Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增目标</Button>
+            <AuthButton perm="agent:create" type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增目标</AuthButton>
           </Space>
         }
         style={{ background: '#1f1f1f', border: '1px solid #333' }}
