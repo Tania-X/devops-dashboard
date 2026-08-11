@@ -149,7 +149,11 @@ func validateWebhookURL(rawURL string) error {
 	if host == "localhost" || host == "::1" {
 		return errors.New("不允许使用本机地址作为 Webhook")
 	}
-	// 域名形式直接放行（钉钉/企微官方域名），只拦 IP 形式的内网地址
+	// 域名形式直接放行（钉钉/企微官方域名），只拦 IP 形式的内网地址。
+	// 已知限制：不做 DNS 解析校验——攻击者用解析到内网的域名可绕过本校验。
+	// 这是有意取舍：本工具部署于内网，能调此 API 者已有 admin 权限，SSRF 威胁
+	// 极弱；DNS 解析会引入额外查询与超时复杂度，收益不成比例。若未来暴露公网，
+	// 应在发送前（Notifier.Send）再次解析校验目标 IP。
 	if ip := net.ParseIP(host); ip != nil {
 		if isPrivateIP(ip) || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
 			return errors.New("不允许使用内网/本机地址作为 Webhook")

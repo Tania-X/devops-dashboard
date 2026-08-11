@@ -15,6 +15,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  // enabled 双向绑定：Switch 变化时同步 state 与表单（保存时统一从表单取，避免竞态）
+  const syncEnabled = (checked: boolean) => {
+    setEnabled(checked);
+    form.setFieldValue('enabled', checked);
+  };
 
   // 加载当前配置并回填表单
   const loadConfig = async () => {
@@ -43,9 +48,9 @@ export default function SettingsPage() {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      // secret 留空表示不修改（后端处理）；enabled 用 state（Switch 实时更新）
+      // secret 留空表示不修改（后端处理）；enabled 从表单读取（state 仅作 Switch 受控显示）
       await api.updateWebhookConfig({
-        enabled,
+        enabled: values.enabled ?? false,
         kind: values.kind,
         url: values.url,
         secret: values.secret || undefined,
@@ -85,10 +90,10 @@ export default function SettingsPage() {
           autoComplete="off"
           style={{ color: '#fff' }}
         >
-          <Form.Item label={<Text style={{ color: '#fff' }}>启用推送通知</Text>}>
+          <Form.Item label={<Text style={{ color: '#fff' }}>启用推送通知</Text>} name="enabled">
             <Switch
               checked={enabled}
-              onChange={setEnabled}
+              onChange={syncEnabled}
               checkedChildren="开"
               unCheckedChildren="关"
             />
