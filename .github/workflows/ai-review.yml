@@ -1,0 +1,30 @@
+# AI PR Review — 自建 CodeRabbit 替代
+#
+# 触发: 任意 PR 打开或更新(目标 main)时, 用 LLM 审查 diff 并发表整体 review 评论。
+# 依赖:
+#   - Secret: DEEPSEEK_API_KEY(仓库 Settings -> Secrets and variables -> Actions)
+#   - ai-tools 仓库的 pr-review action(已合并到 main, 引用 @main)
+# 审查行为配置: 仓库根 .ai-review.yaml(审查重点/忽略路径/噪音门槛)
+name: AI Review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run AI PR Review
+        uses: Tania-X/ai-tools/pr-review@main
+        with:
+          api-key: ${{ secrets.DEEPSEEK_API_KEY }}
+          model: deepseek-chat
+          config-path: .ai-review.yaml
