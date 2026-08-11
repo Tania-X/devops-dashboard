@@ -9,6 +9,7 @@ import DeploymentPage from '../features/deployment/DeploymentPage';
 import MonitorPage from '../features/monitor/MonitorPage';
 import AgentPage from '../features/agent/AgentPage';
 import UserPage from '../features/user/UserPage';
+import SettingsPage from '../features/settings/SettingsPage';
 
 export default function AppRoutes() {
   return (
@@ -23,6 +24,7 @@ export default function AppRoutes() {
           <Route path="monitor" element={<MonitorPage />} />
           <Route path="agents" element={<AgentPage />} />
           <Route path="users" element={<UserPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
     </Routes>

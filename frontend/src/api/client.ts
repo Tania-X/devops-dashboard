@@ -12,11 +12,17 @@ import type {
 } from 'axios';
 
 import type {
+  CreateAgentRequest,
+  CreateUserRequest,
   GetDashboardAlertsParams,
   GetDashboardTrendParams,
   GetLogListParams,
   GetProcessListParams,
-  GetServerListParams
+  GetServerListParams,
+  LoginRequest,
+  UpdateAgentRequest,
+  UpdateUserRequest,
+  WebhookConfigUpdate
 } from './model';
 
 import {
@@ -33,6 +39,7 @@ import type {
 } from 'msw';
 
 import type {
+  AgentStatus,
   AgentTarget,
   AlertItem,
   DashboardMetrics,
@@ -40,35 +47,56 @@ import type {
   DeploymentHistoryItem,
   DeploymentItem,
   HostInfo,
+  LoginResponse,
+  MeResponse,
   PagedResultLogItem,
   PagedResultServerItem,
   ProcessDetail,
   ProcessItem,
   ServerDetail,
-  UserItem
+  TestWebhookConfig200,
+  UserItem,
+  WebhookConfig
 } from './model';
 
-axios.default.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-axios.default.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
 export const getDevOpsDashboardAPI = () => {
+/**
+ * 使用用户名密码登录，返回 JWT Token、用户信息和权限点列表
+ * @summary 用户登录
+ */
+const login = <TData = AxiosResponse<LoginResponse>>(
+    loginRequest: LoginRequest, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/auth/login`,
+      loginRequest,options
+    );
+  }
+
+/**
+ * 返回当前登录用户信息及权限点列表（前端按钮/菜单级权限控制依据）
+ * @summary 获取当前用户信息
+ */
+const getMe = <TData = AxiosResponse<MeResponse>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/auth/me`,options
+    );
+  }
+
+/**
+ * 使当前 Token 失效（客户端清空本地状态即可，服务端尽力处理）
+ * @summary 退出登录
+ */
+const logout = <TData = AxiosResponse<void>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/auth/logout`,undefined,options
+    );
+  }
+
 /**
  * 返回本机实时的 CPU、内存、磁盘使用率及当前告警数（通过 gopsutil 采集）
  * @summary 获取仪表盘当前核心指标
@@ -212,8 +240,45 @@ const getHostInfo = <TData = AxiosResponse<HostInfo>>(
   }
 
 /**
- * 获取 Agent 分发目标列表
- * @summary 获取 Agent 列表
+ * 返回当前告警推送配置（钉钉/企业微信机器人），secret 密钥不回传
+ * @summary 获取告警 Webhook 配置
+ */
+const getWebhookConfig = <TData = AxiosResponse<WebhookConfig>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/settings/webhook`,options
+    );
+  }
+
+/**
+ * 更新推送开关、渠道类型、Webhook 地址。保存后热生效（重建 Notifier）。
+ * @summary 更新告警 Webhook 配置
+ */
+const updateWebhookConfig = <TData = AxiosResponse<WebhookConfig>>(
+    webhookConfigUpdate: WebhookConfigUpdate, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.put(
+      `/api/settings/webhook`,
+      webhookConfigUpdate,options
+    );
+  }
+
+/**
+ * 按当前配置向目标 URL 发送一条测试告警消息，用于验证渠道连通性
+ * @summary 发送测试告警到 Webhook
+ */
+const testWebhookConfig = <TData = AxiosResponse<TestWebhookConfig200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/settings/webhook/test`,undefined,options
+    );
+  }
+
+/**
+ * 返回所有已配置的 Agent 分发目标
+ * @summary 获取 Agent 目标列表
  */
 const getAgentList = <TData = AxiosResponse<AgentTarget[]>>(
      options?: AxiosRequestConfig
@@ -224,32 +289,34 @@ const getAgentList = <TData = AxiosResponse<AgentTarget[]>>(
   }
 
 /**
- * 创建 Agent 分发目标
- * @summary 创建 Agent
+ * 创建新的 Agent 分发目标（密码仅入站，不存储明文序列化）
+ * @summary 新增 Agent 目标
  */
 const createAgent = <TData = AxiosResponse<AgentTarget>>(
-    data: Partial<AgentTarget>, options?: AxiosRequestConfig
+    createAgentRequest: CreateAgentRequest, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.post(
-      `/api/agents`,data,options
+      `/api/agents`,
+      createAgentRequest,options
     );
   }
 
 /**
- * 更新 Agent 分发目标
- * @summary 更新 Agent
+ * 更新指定 Agent 的配置（密码留空表示不修改）
+ * @summary 更新 Agent 目标
  */
 const updateAgent = <TData = AxiosResponse<AgentTarget>>(
-    id: string, data: Partial<AgentTarget>, options?: AxiosRequestConfig
+    id: string,
+    updateAgentRequest: UpdateAgentRequest, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.put(
-      `/api/agents/${id}`,data,options
+      `/api/agents/${id}`,
+      updateAgentRequest,options
     );
   }
 
 /**
- * 删除 Agent 分发目标
- * @summary 删除 Agent
+ * @summary 删除 Agent 目标
  */
 const deleteAgent = <TData = AxiosResponse<void>>(
     id: string, options?: AxiosRequestConfig
@@ -260,34 +327,32 @@ const deleteAgent = <TData = AxiosResponse<void>>(
   }
 
 /**
- * 部署 Agent
- * @summary 部署 Agent
+ * 通过 SSH 将 Agent 二进制部署到目标服务器
+ * @summary 部署 Agent 到目标机
  */
-const deployAgent = <TData = AxiosResponse<{ message: string }>>(
+const deployAgent = <TData = AxiosResponse<void>>(
     id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.post(
-      `/api/agents/${id}/deploy`,{},options
+      `/api/agents/${id}/deploy`,undefined,options
     );
   }
 
 /**
- * 停止 Agent
- * @summary 停止 Agent
+ * @summary 停止目标机上的 Agent
  */
-const stopAgent = <TData = AxiosResponse<{ message: string }>>(
+const stopAgent = <TData = AxiosResponse<void>>(
     id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.post(
-      `/api/agents/${id}/stop`,{},options
+      `/api/agents/${id}/stop`,undefined,options
     );
   }
 
 /**
- * 检查 Agent 状态
- * @summary 检查 Agent 状态
+ * @summary 检查 Agent 运行状态
  */
-const checkAgentStatus = <TData = AxiosResponse<{ status: string }>>(
+const checkAgentStatus = <TData = AxiosResponse<AgentStatus>>(
     id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.get(
@@ -296,8 +361,7 @@ const checkAgentStatus = <TData = AxiosResponse<{ status: string }>>(
   }
 
 /**
- * 获取用户列表
- * @summary 获取用户列表
+ * @summary 获取用户列表（仅管理员）
  */
 const getUserList = <TData = AxiosResponse<UserItem[]>>(
      options?: AxiosRequestConfig
@@ -308,32 +372,34 @@ const getUserList = <TData = AxiosResponse<UserItem[]>>(
   }
 
 /**
- * 创建用户
- * @summary 创建用户
+ * 创建新用户，密码仅出现在请求中
+ * @summary 新增用户（仅管理员）
  */
 const createUser = <TData = AxiosResponse<UserItem>>(
-    data: { username: string; password: string; role: string }, options?: AxiosRequestConfig
+    createUserRequest: CreateUserRequest, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.post(
-      `/api/users`,data,options
+      `/api/users`,
+      createUserRequest,options
     );
   }
 
 /**
- * 更新用户
- * @summary 更新用户
+ * 更新用户角色或密码（密码留空表示不修改）
+ * @summary 更新用户（仅管理员）
  */
 const updateUser = <TData = AxiosResponse<UserItem>>(
-    id: string, data: { username?: string; password?: string; role?: string }, options?: AxiosRequestConfig
+    id: string,
+    updateUserRequest: UpdateUserRequest, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.put(
-      `/api/users/${id}`,data,options
+      `/api/users/${id}`,
+      updateUserRequest,options
     );
   }
 
 /**
- * 删除用户
- * @summary 删除用户
+ * @summary 删除用户（仅管理员）
  */
 const deleteUser = <TData = AxiosResponse<void>>(
     id: string, options?: AxiosRequestConfig
@@ -343,19 +409,10 @@ const deleteUser = <TData = AxiosResponse<void>>(
     );
   }
 
-/**
- * 登出
- * @summary 登出
- */
-const logout = <TData = AxiosResponse<{ message: string }>>(
-     options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.default.post(
-      `/api/auth/logout`,{},options
-    );
-  }
-
-return {getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser,logout}};
+return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
+export type LoginResult = AxiosResponse<LoginResponse>
+export type GetMeResult = AxiosResponse<MeResponse>
+export type LogoutResult = AxiosResponse<void>
 export type GetDashboardMetricsResult = AxiosResponse<DashboardMetrics>
 export type GetDashboardTrendResult = AxiosResponse<DashboardTrend>
 export type GetDashboardAlertsResult = AxiosResponse<AlertItem[]>
@@ -367,7 +424,25 @@ export type GetDeploymentHistoryResult = AxiosResponse<DeploymentHistoryItem[]>
 export type GetProcessListResult = AxiosResponse<ProcessItem[]>
 export type GetProcessDetailResult = AxiosResponse<ProcessDetail>
 export type GetHostInfoResult = AxiosResponse<HostInfo>
+export type GetWebhookConfigResult = AxiosResponse<WebhookConfig>
+export type UpdateWebhookConfigResult = AxiosResponse<WebhookConfig>
+export type TestWebhookConfigResult = AxiosResponse<TestWebhookConfig200>
+export type GetAgentListResult = AxiosResponse<AgentTarget[]>
+export type CreateAgentResult = AxiosResponse<AgentTarget>
+export type UpdateAgentResult = AxiosResponse<AgentTarget>
+export type DeleteAgentResult = AxiosResponse<void>
+export type DeployAgentResult = AxiosResponse<void>
+export type StopAgentResult = AxiosResponse<void>
+export type CheckAgentStatusResult = AxiosResponse<AgentStatus>
+export type GetUserListResult = AxiosResponse<UserItem[]>
+export type CreateUserResult = AxiosResponse<UserItem>
+export type UpdateUserResult = AxiosResponse<UserItem>
+export type DeleteUserResult = AxiosResponse<void>
 
+
+export const getLoginResponseMock = (overrideResponse: Partial< LoginResponse > = {}): LoginResponse => ({token: faker.string.alpha({length: {min: 10, max: 20}}), user: {id: faker.string.alpha({length: {min: 10, max: 20}}), username: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','operator','viewer'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])}, permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getGetMeResponseMock = (overrideResponse: Partial< MeResponse > = {}): MeResponse => ({user: {id: faker.string.alpha({length: {min: 10, max: 20}}), username: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','operator','viewer'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])}, permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getGetDashboardMetricsResponseMock = (overrideResponse: Partial< DashboardMetrics > = {}): DashboardMetrics => ({cpu: {current: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.helpers.arrayElement(['normal','warning','critical'] as const)}, memory: {current: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.helpers.arrayElement(['normal','warning','critical'] as const)}, disk: {current: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), status: faker.helpers.arrayElement(['normal','warning','critical'] as const)}, alertCount: faker.number.int({min: undefined, max: undefined}), ...overrideResponse})
 
@@ -391,6 +466,60 @@ export const getGetProcessDetailResponseMock = (): ProcessDetail => ({...{pid: f
 
 export const getGetHostInfoResponseMock = (overrideResponse: Partial< HostInfo > = {}): HostInfo => ({hostname: faker.string.alpha({length: {min: 10, max: 20}}), os: faker.string.alpha({length: {min: 10, max: 20}}), platform: faker.string.alpha({length: {min: 10, max: 20}}), platformVersion: faker.string.alpha({length: {min: 10, max: 20}}), kernelVersion: faker.string.alpha({length: {min: 10, max: 20}}), arch: faker.string.alpha({length: {min: 10, max: 20}}), bootTime: `${faker.date.past().toISOString().split('.')[0]}Z`, uptime: faker.string.alpha({length: {min: 10, max: 20}}), cpuModel: faker.string.alpha({length: {min: 10, max: 20}}), cpuCores: faker.number.int({min: undefined, max: undefined}), cpuLogicalCores: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), totalMemoryGb: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), virtualMemoryGb: faker.helpers.arrayElement([faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), undefined]), ...overrideResponse})
 
+export const getGetWebhookConfigResponseMock = (overrideResponse: Partial< WebhookConfig > = {}): WebhookConfig => ({id: faker.number.int({min: undefined, max: undefined}), enabled: faker.datatype.boolean(), kind: faker.helpers.arrayElement(['dingtalk','wecom'] as const), url: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
+
+export const getUpdateWebhookConfigResponseMock = (overrideResponse: Partial< WebhookConfig > = {}): WebhookConfig => ({id: faker.number.int({min: undefined, max: undefined}), enabled: faker.datatype.boolean(), kind: faker.helpers.arrayElement(['dingtalk','wecom'] as const), url: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
+
+export const getTestWebhookConfigResponseMock = (overrideResponse: Partial< TestWebhookConfig200 > = {}): TestWebhookConfig200 => ({success: faker.datatype.boolean(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getGetAgentListResponseMock = (): AgentTarget[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), host: faker.string.alpha({length: {min: 10, max: 20}}), port: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), username: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), authType: faker.helpers.arrayElement([faker.helpers.arrayElement(['password','key'] as const), undefined]), deployDir: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), agentPort: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), status: faker.helpers.arrayElement(['running','stopped','deploying'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])})))
+
+export const getCreateAgentResponseMock = (overrideResponse: Partial< AgentTarget > = {}): AgentTarget => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), host: faker.string.alpha({length: {min: 10, max: 20}}), port: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), username: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), authType: faker.helpers.arrayElement([faker.helpers.arrayElement(['password','key'] as const), undefined]), deployDir: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), agentPort: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), status: faker.helpers.arrayElement(['running','stopped','deploying'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
+
+export const getUpdateAgentResponseMock = (overrideResponse: Partial< AgentTarget > = {}): AgentTarget => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), host: faker.string.alpha({length: {min: 10, max: 20}}), port: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), username: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), authType: faker.helpers.arrayElement([faker.helpers.arrayElement(['password','key'] as const), undefined]), deployDir: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), agentPort: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), status: faker.helpers.arrayElement(['running','stopped','deploying'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
+
+export const getCheckAgentStatusResponseMock = (overrideResponse: Partial< AgentStatus > = {}): AgentStatus => ({running: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), pid: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), version: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), uptimeSec: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), ...overrideResponse})
+
+export const getGetUserListResponseMock = (): UserItem[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), username: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','operator','viewer'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])})))
+
+export const getCreateUserResponseMock = (overrideResponse: Partial< UserItem > = {}): UserItem => ({id: faker.string.alpha({length: {min: 10, max: 20}}), username: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','operator','viewer'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
+
+export const getUpdateUserResponseMock = (overrideResponse: Partial< UserItem > = {}): UserItem => ({id: faker.string.alpha({length: {min: 10, max: 20}}), username: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','operator','viewer'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
+
+
+export const getLoginMockHandler = (overrideResponse?: LoginResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<LoginResponse> | LoginResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/api/auth/login', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getLoginResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getGetMeMockHandler = (overrideResponse?: MeResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<MeResponse> | MeResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/api/auth/me', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetMeResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getLogoutMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.post('*/api/auth/logout', async (info) => {await delay(1000);
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+    return new HttpResponse(null,
+      { status: 200,
+        
+      })
+  }, options)
+}
 
 export const getGetDashboardMetricsMockHandler = (overrideResponse?: DashboardMetrics | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DashboardMetrics> | DashboardMetrics), options?: RequestHandlerOptions) => {
   return http.get('*/api/dashboard/metrics', async (info) => {await delay(1000);
@@ -523,7 +652,170 @@ export const getGetHostInfoMockHandler = (overrideResponse?: HostInfo | ((info: 
       })
   }, options)
 }
+
+export const getGetWebhookConfigMockHandler = (overrideResponse?: WebhookConfig | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<WebhookConfig> | WebhookConfig), options?: RequestHandlerOptions) => {
+  return http.get('*/api/settings/webhook', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetWebhookConfigResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getUpdateWebhookConfigMockHandler = (overrideResponse?: WebhookConfig | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<WebhookConfig> | WebhookConfig), options?: RequestHandlerOptions) => {
+  return http.put('*/api/settings/webhook', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getUpdateWebhookConfigResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getTestWebhookConfigMockHandler = (overrideResponse?: TestWebhookConfig200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<TestWebhookConfig200> | TestWebhookConfig200), options?: RequestHandlerOptions) => {
+  return http.post('*/api/settings/webhook/test', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getTestWebhookConfigResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getGetAgentListMockHandler = (overrideResponse?: AgentTarget[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AgentTarget[]> | AgentTarget[]), options?: RequestHandlerOptions) => {
+  return http.get('*/api/agents', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAgentListResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getCreateAgentMockHandler = (overrideResponse?: AgentTarget | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AgentTarget> | AgentTarget), options?: RequestHandlerOptions) => {
+  return http.post('*/api/agents', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateAgentResponseMock()),
+      { status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getUpdateAgentMockHandler = (overrideResponse?: AgentTarget | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<AgentTarget> | AgentTarget), options?: RequestHandlerOptions) => {
+  return http.put('*/api/agents/:id', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getUpdateAgentResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getDeleteAgentMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/api/agents/:id', async (info) => {await delay(1000);
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+    return new HttpResponse(null,
+      { status: 200,
+        
+      })
+  }, options)
+}
+
+export const getDeployAgentMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.post('*/api/agents/:id/deploy', async (info) => {await delay(1000);
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+    return new HttpResponse(null,
+      { status: 200,
+        
+      })
+  }, options)
+}
+
+export const getStopAgentMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.post('*/api/agents/:id/stop', async (info) => {await delay(1000);
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+    return new HttpResponse(null,
+      { status: 200,
+        
+      })
+  }, options)
+}
+
+export const getCheckAgentStatusMockHandler = (overrideResponse?: AgentStatus | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AgentStatus> | AgentStatus), options?: RequestHandlerOptions) => {
+  return http.get('*/api/agents/:id/status', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCheckAgentStatusResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getGetUserListMockHandler = (overrideResponse?: UserItem[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<UserItem[]> | UserItem[]), options?: RequestHandlerOptions) => {
+  return http.get('*/api/users', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetUserListResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getCreateUserMockHandler = (overrideResponse?: UserItem | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<UserItem> | UserItem), options?: RequestHandlerOptions) => {
+  return http.post('*/api/users', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateUserResponseMock()),
+      { status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getUpdateUserMockHandler = (overrideResponse?: UserItem | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<UserItem> | UserItem), options?: RequestHandlerOptions) => {
+  return http.put('*/api/users/:id', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getUpdateUserResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getDeleteUserMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/api/users/:id', async (info) => {await delay(1000);
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+    return new HttpResponse(null,
+      { status: 200,
+        
+      })
+  }, options)
+}
 export const getDevOpsDashboardAPIMock = () => [
+  getLoginMockHandler(),
+  getGetMeMockHandler(),
+  getLogoutMockHandler(),
   getGetDashboardMetricsMockHandler(),
   getGetDashboardTrendMockHandler(),
   getGetDashboardAlertsMockHandler(),
@@ -534,4 +826,18 @@ export const getDevOpsDashboardAPIMock = () => [
   getGetDeploymentHistoryMockHandler(),
   getGetProcessListMockHandler(),
   getGetProcessDetailMockHandler(),
-  getGetHostInfoMockHandler()]
+  getGetHostInfoMockHandler(),
+  getGetWebhookConfigMockHandler(),
+  getUpdateWebhookConfigMockHandler(),
+  getTestWebhookConfigMockHandler(),
+  getGetAgentListMockHandler(),
+  getCreateAgentMockHandler(),
+  getUpdateAgentMockHandler(),
+  getDeleteAgentMockHandler(),
+  getDeployAgentMockHandler(),
+  getStopAgentMockHandler(),
+  getCheckAgentStatusMockHandler(),
+  getGetUserListMockHandler(),
+  getCreateUserMockHandler(),
+  getUpdateUserMockHandler(),
+  getDeleteUserMockHandler()]

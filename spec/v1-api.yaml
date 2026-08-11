@@ -13,6 +13,63 @@ servers:
     description: 前端 MSW Mock 环境（相对路径）
 
 paths:
+  /api/auth/login:
+    post:
+      operationId: login
+      summary: 用户登录
+      description: 使用用户名密码登录，返回 JWT Token、用户信息和权限点列表
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/me:
+    get:
+      operationId: getMe
+      summary: 获取当前用户信息
+      description: 返回当前登录用户信息及权限点列表（前端按钮/菜单级权限控制依据）
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功返回当前用户
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/logout:
+    post:
+      operationId: logout
+      summary: 退出登录
+      description: 使当前 Token 失效（客户端清空本地状态即可，服务端尽力处理）
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 退出成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/dashboard/metrics:
     get:
       operationId: getDashboardMetrics
@@ -366,6 +423,258 @@ paths:
                     description: 发送结果详情（HTTP 状态或错误信息）
         '400':
           description: 未配置 Webhook 或 URL 为空
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/agents:
+    get:
+      operationId: getAgentList
+      summary: 获取 Agent 目标列表
+      description: 返回所有已配置的 Agent 分发目标
+      tags:
+        - Agent
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功返回 Agent 列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentTarget'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createAgent
+      summary: 新增 Agent 目标
+      description: 创建新的 Agent 分发目标（密码仅入站，不存储明文序列化）
+      tags:
+        - Agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgentRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTarget'
+        '400':
+          description: 参数校验失败
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/agents/{id}:
+    put:
+      operationId: updateAgent
+      summary: 更新 Agent 目标
+      description: 更新指定 Agent 的配置（密码留空表示不修改）
+      tags:
+        - Agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAgentRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTarget'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      operationId: deleteAgent
+      summary: 删除 Agent 目标
+      tags:
+        - Agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/agents/{id}/deploy:
+    post:
+      operationId: deployAgent
+      summary: 部署 Agent 到目标机
+      description: 通过 SSH 将 Agent 二进制部署到目标服务器
+      tags:
+        - Agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 部署已触发
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/agents/{id}/stop:
+    post:
+      operationId: stopAgent
+      summary: 停止目标机上的 Agent
+      tags:
+        - Agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 停止指令已发送
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/agents/{id}/status:
+    get:
+      operationId: checkAgentStatus
+      summary: 检查 Agent 运行状态
+      tags:
+        - Agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent 运行状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/users:
+    get:
+      operationId: getUserList
+      summary: 获取用户列表（仅管理员）
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功返回用户列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createUser
+      summary: 新增用户（仅管理员）
+      description: 创建新用户，密码仅出现在请求中
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/users/{id}:
+    put:
+      operationId: updateUser
+      summary: 更新用户（仅管理员）
+      description: 更新用户角色或密码（密码留空表示不修改）
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      operationId: deleteUser
+      summary: 删除用户（仅管理员）
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -798,3 +1107,178 @@ components:
         secret:
           type: string
           description: 加签密钥（可选，钉钉安全设置用；留空表示不修改）
+
+    # ---------- Auth ----------
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          example: "********"
+
+    LoginResponse:
+      type: object
+      required: [token, user, permissions]
+      properties:
+        token:
+          type: string
+          description: JWT Token
+        user:
+          $ref: '#/components/schemas/UserItem'
+        permissions:
+          type: array
+          items:
+            type: string
+          description: 当前用户权限点列表，如 ["user:read","webhook:update"]
+
+    MeResponse:
+      type: object
+      required: [user, permissions]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserItem'
+        permissions:
+          type: array
+          items:
+            type: string
+
+    # ---------- User ----------
+    UserItem:
+      type: object
+      required: [id, username, role, createdAt]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+          example: admin
+        role:
+          type: string
+          enum: [admin, operator, viewer]
+          description: 角色：管理员 / 运维 / 观察者
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required: [username, password, role]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, operator, viewer]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          description: 新密码，留空表示不修改
+        role:
+          type: string
+          enum: [admin, operator, viewer]
+
+    # ---------- Agent ----------
+    AgentTarget:
+      type: object
+      required: [id, name, host, status, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: prod-web-01
+        host:
+          type: string
+          example: 192.168.1.10
+        port:
+          type: integer
+          description: SSH 端口
+          default: 22
+        username:
+          type: string
+        authType:
+          type: string
+          enum: [password, key]
+        deployDir:
+          type: string
+        agentPort:
+          type: integer
+          description: Agent 采集服务端口
+          default: 9100
+        status:
+          type: string
+          enum: [running, stopped, deploying]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateAgentRequest:
+      type: object
+      required: [name, host]
+      properties:
+        name:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        authType:
+          type: string
+        password:
+          type: string
+          description: SSH 密码（仅入站，不序列化返回）
+        deployDir:
+          type: string
+        agentPort:
+          type: integer
+
+    UpdateAgentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        authType:
+          type: string
+        password:
+          type: string
+          description: 新密码，留空表示不修改
+        deployDir:
+          type: string
+        agentPort:
+          type: integer
+
+    AgentStatus:
+      type: object
+      properties:
+        running:
+          type: boolean
+          description: Agent 进程是否在运行
+        pid:
+          type: integer
+        version:
+          type: string
+        uptimeSec:
+          type: integer
