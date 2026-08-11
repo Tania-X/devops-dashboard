@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from './agentAuthType';
 export * from './agentStatus';
 export * from './agentTarget';
 export * from './agentTargetAuthType';

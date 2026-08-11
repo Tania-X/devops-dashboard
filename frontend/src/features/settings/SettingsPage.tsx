@@ -43,7 +43,13 @@ export default function SettingsPage() {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      await api.updateWebhookConfig({ enabled, kind: values.kind, url: values.url });
+      // secret 留空表示不修改（后端处理）；enabled 用 state（Switch 实时更新）
+      await api.updateWebhookConfig({
+        enabled,
+        kind: values.kind,
+        url: values.url,
+        secret: values.secret || undefined,
+      });
       message.success('配置已保存');
     } catch {
       // validateFields 失败或请求失败
@@ -118,6 +124,17 @@ export default function SettingsPage() {
           >
             <Input
               placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
+              style={{ background: '#111217', color: '#fff' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={<Text style={{ color: '#fff' }}>加签密钥（可选）</Text>}
+            name="secret"
+            tooltip="钉钉机器人安全设置中的加签密钥；企业微信机器人无需填写"
+          >
+            <Input.Password
+              placeholder="仅钉钉渠道需要，留空表示不修改"
               style={{ background: '#111217', color: '#fff' }}
             />
           </Form.Item>

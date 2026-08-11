@@ -1190,6 +1190,11 @@ components:
           enum: [admin, operator, viewer]
 
     # ---------- Agent ----------
+    AgentAuthType:
+      type: string
+      enum: [password, key]
+      description: SSH 认证方式：密码 / 密钥
+
     AgentTarget:
       type: object
       required: [id, name, host, status, createdAt]
@@ -1209,8 +1214,7 @@ components:
         username:
           type: string
         authType:
-          type: string
-          enum: [password, key]
+          $ref: '#/components/schemas/AgentAuthType'
         deployDir:
           type: string
         agentPort:
@@ -1240,7 +1244,7 @@ components:
         username:
           type: string
         authType:
-          type: string
+          $ref: '#/components/schemas/AgentAuthType'
         password:
           type: string
           description: SSH 密码（仅入站，不序列化返回）
@@ -1261,7 +1265,7 @@ components:
         username:
           type: string
         authType:
-          type: string
+          $ref: '#/components/schemas/AgentAuthType'
         password:
           type: string
           description: 新密码，留空表示不修改

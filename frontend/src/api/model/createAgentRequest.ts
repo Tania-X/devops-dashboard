@@ -5,13 +5,14 @@
  * 运维监控仪表盘一期 API 规范（Spec-Driven Development）
  * OpenAPI spec version: 1.0.0
  */
+import type { AgentAuthType } from './agentAuthType';
 
 export interface CreateAgentRequest {
   name: string;
   host: string;
   port?: number;
   username?: string;
-  authType?: string;
+  authType?: AgentAuthType;
   /** SSH 密码（仅入站，不序列化返回） */
   password?: string;
   deployDir?: string;
