@@ -38,6 +38,18 @@ import type {
   RequestHandlerOptions
 } from 'msw';
 
+// ============================================
+// 请求拦截器:自动附加 JWT(登录后 token 存于 localStorage)
+// 所有 API 调用自动携带 Authorization: Bearer <token>
+// ============================================
+axios.default.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 import {
   AgentAuthType
 } from './model';

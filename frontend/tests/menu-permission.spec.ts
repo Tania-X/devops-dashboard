@@ -29,7 +29,7 @@ test.describe('菜单级权限控制', () => {
     expect(visible.length).toBe(5);
   });
 
-  test('admin 可见全部 7 个菜单', async ({ page }) => {
+  test('admin 可见全部 8 个菜单', async ({ page }) => {
     await login(page, 'admin', 'admin123');
 
     const visible = await page.locator('.ant-menu-item').allTextContents();
@@ -37,6 +37,7 @@ test.describe('菜单级权限控制', () => {
 
     expect(visible.join()).toContain('用户管理');
     expect(visible.join()).toContain('Agent 管理');
-    expect(visible.length).toBe(7);
+    expect(visible.join()).toContain('系统设置');
+    expect(visible.length).toBe(8);
   });
 });
