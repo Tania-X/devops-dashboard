@@ -7,6 +7,7 @@ import {
   FundOutlined,
   NodeIndexOutlined,
   UserOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -56,6 +57,12 @@ const menuItems = [
     icon: <UserOutlined />,
     label: '用户管理',
     perm: 'user:read',
+  },
+  {
+    key: '/settings',
+    icon: <SettingOutlined />,
+    label: '系统设置',
+    perm: 'webhook:read',
   },
 ];
 

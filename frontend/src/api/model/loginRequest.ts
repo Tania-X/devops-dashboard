@@ -5,13 +5,8 @@
  * 运维监控仪表盘一期 API 规范（Spec-Driven Development）
  * OpenAPI spec version: 1.0.0
  */
-import type { UserItemRole } from './userItemRole';
 
-export interface UserItem {
-  id: string;
+export interface LoginRequest {
   username: string;
-  /** 角色：管理员 / 运维 / 观察者 */
-  role: UserItemRole;
-  createdAt: string;
-  updatedAt?: string;
+  password: string;
 }

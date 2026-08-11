@@ -6,20 +6,15 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AgentAuthType } from './agentAuthType';
-import type { AgentTargetStatus } from './agentTargetStatus';
 
-export interface AgentTarget {
-  id: string;
+export interface CreateAgentRequest {
   name: string;
   host: string;
-  /** SSH 端口 */
   port?: number;
   username?: string;
   authType?: AgentAuthType;
+  /** SSH 密码（仅入站，不序列化返回） */
+  password?: string;
   deployDir?: string;
-  /** Agent 采集服务端口 */
   agentPort?: number;
-  status: AgentTargetStatus;
-  createdAt: string;
-  updatedAt?: string;
 }

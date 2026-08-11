@@ -4,7 +4,9 @@
 # 依赖:
 #   - Secret: DEEPSEEK_API_KEY(仓库 Settings -> Secrets and variables -> Actions)
 #   - ai-tools 仓库的 pr-review action(已合并到 main, 引用 @main)
-# 审查行为配置: 仓库根 .ai-review.yaml(审查重点/忽略路径/噪音门槛)
+# 门禁: 存在 error 级别问题时 "AI Review" check-run 失败(PR 变红)。
+#        仓库分支保护规则勾选该 check 可阻止合并; 开发者 push 新 commit 自动重跑。
+# 审查行为配置: 仓库根 .ai-review.yaml(审查重点/忽略路径/噪音门槛/门禁级别)
 name: AI Review
 
 on:
@@ -15,6 +17,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  checks: write
 
 jobs:
   ai-review:
