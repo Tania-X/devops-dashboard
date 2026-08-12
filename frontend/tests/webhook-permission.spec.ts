@@ -2,14 +2,17 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 // 浏览器通道由 playwright.config.js 自动探测（msedge→chrome→chromium），此处不硬编码
-// Webhook 设置页权限分层测试:
-//   webhook:read   → 菜单可见,表单只读,无操作按钮
-//   webhook:update → 表单可编辑 + 保存按钮
-//   webhook:test   → 测试推送按钮
-// 依赖关系:read 是基础(菜单显隐),update/test 需配合 read 才可达
+// Webhook 设置页权限组合矩阵测试:
+//   权限点:webhook:read(查看) / webhook:update(配置+测试推送)
+//   组合空间 2²=4,全部覆盖:
+//     ① 无 webhook 权限      → 菜单不可见
+//     ② 仅 read              → 菜单可见,表单只读,无操作按钮
+//     ③ 仅 update(无 read)   → 菜单不可见(依赖 read 才可达)
+//     ④ read + update        → 菜单可见,可编辑,有保存/测试按钮
+// 依赖关系:read 是入口(菜单显隐),update 依赖 read 才有意义
 
-const VIEWER_READ_ONLY_PERMS = [
-  'dashboard:view', 'server:read', 'log:read', 'deployment:read', 'monitor:read', 'webhook:read',
+const BASE_PERMS = [
+  'dashboard:view', 'server:read', 'log:read', 'deployment:read', 'monitor:read',
 ];
 
 async function login(page: Page, username: string, password: string) {
@@ -21,12 +24,6 @@ async function login(page: Page, username: string, password: string) {
   await page.locator('.ant-menu-item').first().waitFor({ timeout: 15000 });
 }
 
-async function goToSettings(page: Page) {
-  await page.locator('.ant-menu-item').filter({ hasText: '系统设置' }).click();
-  await page.waitForURL('**/settings');
-  await page.locator('form').first().waitFor({ timeout: 15000 });
-}
-
 async function readFormState(page: Page) {
   return page.evaluate(() => {
     const qa = (sel: string) => Array.from(document.querySelectorAll(sel));
@@ -35,13 +32,12 @@ async function readFormState(page: Page) {
       urlInputDisabled: isDisabled(qa('input[placeholder*="qyapi"]')[0] ?? null),
       saveBtnCount: qa('button').filter((b) => b.textContent?.includes('保存')).length,
       testBtnCount: qa('button').filter((b) => b.textContent?.includes('测试推送')).length,
-      readOnlyAlert: qa('.ant-alert').filter((a) => a.textContent?.includes('只读')).length,
     };
   });
 }
 
-// 通过 admin 重置 viewer 角色权限为仅只读(webhook:read),保证测试前置条件确定
-async function resetViewerToReadOnly() {
+// 通过 admin 设置 viewer 角色权限
+async function setViewerPerms(perms: string[]) {
   const res = await fetch('http://localhost:8080/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -51,36 +47,70 @@ async function resetViewerToReadOnly() {
   await fetch('http://localhost:8080/api/settings/roles/viewer', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ permissions: VIEWER_READ_ONLY_PERMS }),
+    body: JSON.stringify({ permissions: perms }),
   });
 }
 
-test.describe('Webhook 设置页权限分层', () => {
-  test('viewer(仅 webhook:read) — 表单只读,无保存/测试按钮', async ({ page }) => {
-    await resetViewerToReadOnly(); // 先重置角色权限
+test.describe('Webhook 设置页权限组合矩阵', () => {
+  test('① 无 webhook 权限 — 菜单不可见', async ({ page }) => {
+    await setViewerPerms(BASE_PERMS);
     await login(page, 'test', 'test');
-    await goToSettings(page);
 
-    const state = await readFormState(page);
-    console.log('viewer 仅 read:', JSON.stringify(state));
-
-    expect(state.urlInputDisabled).toBe(true);   // 输入框禁用
-    expect(state.saveBtnCount).toBe(0);          // 无保存按钮
-    expect(state.testBtnCount).toBe(0);          // 无测试按钮
-    expect(state.readOnlyAlert).toBeGreaterThan(0); // 有只读提示
+    const menuItems = await page.locator('.ant-menu-item').allTextContents();
+    console.log('无 webhook 权限菜单:', JSON.stringify(menuItems));
+    expect(menuItems.join()).not.toContain('系统设置');
   });
 
-  test('admin — 表单可编辑,有保存/测试按钮', async ({ page }) => {
+  test('② 仅 webhook:read — 菜单可见,表单只读,无按钮', async ({ page }) => {
+    await setViewerPerms([...BASE_PERMS, 'webhook:read']);
+    await login(page, 'test', 'test');
+    await page.locator('.ant-menu-item').filter({ hasText: '系统设置' }).click();
+    await page.waitForURL('**/settings');
+    await page.locator('form').first().waitFor({ timeout: 15000 });
+
+    const state = await readFormState(page);
+    console.log('仅 read:', JSON.stringify(state));
+
+    expect(state.urlInputDisabled).toBe(true);
+    expect(state.saveBtnCount).toBe(0);
+    expect(state.testBtnCount).toBe(0);
+  });
+
+  test('③ 仅 webhook:update(无 read) — 菜单不可见', async ({ page }) => {
+    await setViewerPerms([...BASE_PERMS, 'webhook:update']);
+    await login(page, 'test', 'test');
+
+    const menuItems = await page.locator('.ant-menu-item').allTextContents();
+    console.log('仅 update 菜单:', JSON.stringify(menuItems));
+    expect(menuItems.join()).not.toContain('系统设置');
+  });
+
+  test('④ read + update — 可编辑,有保存/测试按钮', async ({ page }) => {
+    await setViewerPerms([...BASE_PERMS, 'webhook:read', 'webhook:update']);
+    await login(page, 'test', 'test');
+    await page.locator('.ant-menu-item').filter({ hasText: '系统设置' }).click();
+    await page.waitForURL('**/settings');
+    await page.locator('form').first().waitFor({ timeout: 15000 });
+
+    const state = await readFormState(page);
+    console.log('read+update:', JSON.stringify(state));
+
+    expect(state.urlInputDisabled).toBe(false);
+    expect(state.saveBtnCount).toBe(1);
+    expect(state.testBtnCount).toBe(1);
+  });
+
+  test('admin — 完整功能', async ({ page }) => {
     await login(page, 'admin', 'admin123');
-    await goToSettings(page);
+    await page.locator('.ant-menu-item').filter({ hasText: '系统设置' }).click();
+    await page.waitForURL('**/settings');
+    await page.locator('form').first().waitFor({ timeout: 15000 });
 
     const state = await readFormState(page);
     console.log('admin:', JSON.stringify(state));
 
-    expect(state.urlInputDisabled).toBe(false);  // 输入框可编辑
-    expect(state.saveBtnCount).toBe(1);          // 有保存按钮
-    expect(state.testBtnCount).toBe(1);          // 有测试按钮
-    expect(state.readOnlyAlert).toBe(0);         // 无只读提示
+    expect(state.urlInputDisabled).toBe(false);
+    expect(state.saveBtnCount).toBe(1);
+    expect(state.testBtnCount).toBe(1);
   });
 });
-

@@ -30,7 +30,7 @@ export default function SettingsPage() {
 }
 
 // WebhookSettingsTab 告警 Webhook 推送配置（企业微信/钉钉机器人）
-// 权限分层:webhook:read=只读查看;webhook:update=可编辑+保存;webhook:test=测试推送
+// 权限:webhook:read=只读查看;webhook:update=可编辑+保存+测试推送
 function WebhookSettingsTab() {
   const [form] = Form.useForm<WebhookConfigUpdate>();
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,6 @@ function WebhookSettingsTab() {
   const [testing, setTesting] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const canUpdate = usePermission('webhook:update');
-  const canTest = usePermission('webhook:test');
   const readOnly = !canUpdate; // 无 update 权限 → 表单只读
   // enabled 双向绑定：Switch 变化时同步 state 与表单（保存时统一从表单取，避免竞态）
   const syncEnabled = (checked: boolean) => {
@@ -181,15 +180,6 @@ function WebhookSettingsTab() {
             />
           )}
 
-          {readOnly && (
-            <Alert
-              type="warning"
-              showIcon
-              message="当前角色仅有查看权限，配置内容为只读。如需修改请联系管理员开通「配置 Webhook」权限。"
-              style={{ marginBottom: 24, background: '#2a2018', border: '1px solid #4a3a28' }}
-            />
-          )}
-
           <Space>
             {canUpdate && (
               <Button
@@ -201,7 +191,7 @@ function WebhookSettingsTab() {
                 保存
               </Button>
             )}
-            {canTest && (
+            {canUpdate && (
               <Button
                 icon={<SendOutlined />}
                 loading={testing}

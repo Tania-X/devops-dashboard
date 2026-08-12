@@ -82,10 +82,10 @@ func (h *Handler) SetupRouter() *gin.Engine {
 			auth.PUT("/users/:id", RequirePermission(authz.PermUserUpdate), h.UpdateUser)
 			auth.DELETE("/users/:id", RequirePermission(authz.PermUserDelete), h.DeleteUser)
 
-			// 告警 Webhook 配置（仅 admin）
+			// 告警 Webhook 配置（read=查看, update=配置+测试推送）
 			auth.GET("/settings/webhook", RequirePermission(authz.PermWebhookRead), h.GetWebhookConfig)
 			auth.PUT("/settings/webhook", RequirePermission(authz.PermWebhookUpdate), h.UpdateWebhookConfig)
-			auth.POST("/settings/webhook/test", RequirePermission(authz.PermWebhookTest), h.TestWebhookConfig)
+			auth.POST("/settings/webhook/test", RequirePermission(authz.PermWebhookUpdate), h.TestWebhookConfig)
 
 			// 角色权限配置（仅 admin，RBAC 二期）
 			auth.GET("/settings/roles", RequirePermission(authz.PermSettingsManage), h.ListRoles)

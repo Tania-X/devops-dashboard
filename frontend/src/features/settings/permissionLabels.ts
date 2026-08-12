@@ -19,7 +19,6 @@ export const PERMISSION_LABELS: Record<string, string> = {
   'user:delete': '删除用户',
   'webhook:read': '查看 Webhook',
   'webhook:update': '配置 Webhook',
-  'webhook:test': '测试推送',
   'settings:manage': '权限配置',
 };
 

@@ -44,7 +44,6 @@ const (
 
 	PermWebhookRead   = "webhook:read"
 	PermWebhookUpdate = "webhook:update"
-	PermWebhookTest   = "webhook:test"
 
 	PermSettingsManage = "settings:manage"
 )
@@ -61,7 +60,7 @@ var allPermissions = []string{
 	PermDashboardView, PermServerRead, PermLogRead, PermDeploymentRead, PermMonitorRead,
 	PermAgentRead, PermAgentCreate, PermAgentUpdate, PermAgentDelete, PermAgentDeploy, PermAgentStop,
 	PermUserRead, PermUserCreate, PermUserUpdate, PermUserDelete,
-	PermWebhookRead, PermWebhookUpdate, PermWebhookTest,
+	PermWebhookRead, PermWebhookUpdate,
 	PermSettingsManage,
 }
 
@@ -103,7 +102,7 @@ var permissionGroups = []PermissionGroup{
 		PermUserRead, PermUserCreate, PermUserUpdate, PermUserDelete,
 	}},
 	{Obj: "webhook", Label: "告警 Webhook", Permissions: []string{
-		PermWebhookRead, PermWebhookUpdate, PermWebhookTest,
+		PermWebhookRead, PermWebhookUpdate,
 	}},
 	{Obj: "settings", Label: "系统设置", Permissions: []string{PermSettingsManage}},
 }
