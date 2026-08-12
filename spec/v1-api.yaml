@@ -426,6 +426,103 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/settings/roles:
+    get:
+      operationId: listRoles
+      summary: 获取角色权限配置
+      description: 返回全部角色及其权限点（供权限配置页矩阵渲染），admin 为通配策略锁定
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功返回角色列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [roles]
+                properties:
+                  roles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoleInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 无 settings:manage 权限
+
+  /api/settings/permissions:
+    get:
+      operationId: listPermissionGroups
+      summary: 获取权限点分组清单
+      description: 返回权限点分组（obj 分组 + 中文标签），供权限矩阵按组渲染
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功返回权限点分组
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [groups]
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PermissionGroup'
+
+  /api/settings/roles/{role}:
+    put:
+      operationId: updateRolePermissions
+      summary: 更新角色权限点
+      description: 覆盖更新指定角色的权限点集合并热生效（无需重新登录）。admin 角色为通配策略，不可修改。
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+            example: operator
+          description: 角色名（admin / operator / viewer）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRolePermissionsRequest'
+      responses:
+        '200':
+          description: 更新成功，返回该角色最新权限点
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [role, permissions]
+                properties:
+                  role:
+                    type: string
+                    example: operator
+                  permissions:
+                    type: array
+                    items:
+                      type: string
+                      example: 'agent:deploy'
+        '400':
+          description: 参数错误（admin 锁定 / 未知角色 / 非法权限点）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 无 settings:manage 权限
+
   /api/agents:
     get:
       operationId: getAgentList
@@ -1107,6 +1204,71 @@ components:
         secret:
           type: string
           description: 加签密钥（可选，钉钉安全设置用；留空表示不修改）
+
+    # ---------- RBAC 角色权限配置 ----------
+    RoleInfo:
+      type: object
+      required: [name, label, description, builtin, locked, permissions]
+      properties:
+        name:
+          type: string
+          description: 角色标识（admin / operator / viewer）
+          example: operator
+        label:
+          type: string
+          description: 角色中文名
+          example: 运维
+        description:
+          type: string
+          description: 角色说明
+        builtin:
+          type: boolean
+          description: 是否内置角色（内置角色不可删除）
+        locked:
+          type: boolean
+          description: 是否锁定（admin 为通配策略，权限不可修改）
+        permissions:
+          type: array
+          description: 该角色当前拥有的权限点（obj:act 列表）
+          items:
+            type: string
+            example: 'agent:deploy'
+
+    PermissionGroup:
+      type: object
+      required: [obj, label, permissions]
+      properties:
+        obj:
+          type: string
+          description: 权限点资源对象（资源分组 key）
+          example: agent
+        label:
+          type: string
+          description: 分组中文名
+          example: Agent
+        permissions:
+          type: array
+          description: 该分组下的权限点（obj:act 列表）
+          items:
+            type: string
+            example: 'agent:create'
+        requires:
+          type: object
+          description: 组内权限点的前置依赖映射（键=权限点，值=其依赖的入口权限点）。如 webhook:update → webhook:read；无依赖的分组省略此字段
+          additionalProperties:
+            type: string
+            example: 'webhook:read'
+
+    UpdateRolePermissionsRequest:
+      type: object
+      required: [permissions]
+      properties:
+        permissions:
+          type: array
+          description: 覆盖设置的角色权限点（obj:act 列表，必须为系统已注册权限点）
+          items:
+            type: string
+            example: 'agent:read'
 
     # ---------- Auth ----------
     LoginRequest:

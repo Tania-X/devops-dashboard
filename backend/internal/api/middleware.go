@@ -38,9 +38,9 @@ func (h *Handler) AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// RequirePermission 权限校验中间件：校验当前登录用户角色是否拥有 (obj, act) 权限。
+// RequirePermission 权限校验中间件：校验当前登录用户角色是否拥有指定权限点（如 "user:read"）。
 // 取代原来的 AdminMiddleware——权限点驱动，支持任意角色（admin/viewer/operator...）。
-func RequirePermission(obj, act string) gin.HandlerFunc {
+func RequirePermission(perm string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, exists := c.Get("currentUser")
 		if !exists {
@@ -54,6 +54,7 @@ func RequirePermission(obj, act string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		obj, act := splitPermissionPoint(perm)
 		allowed, err := authz.HasPermission(u.Role, obj, act)
 		if err != nil || !allowed {
 			ErrorJSON(c, http.StatusForbidden, "权限不足")
@@ -62,4 +63,14 @@ func RequirePermission(obj, act string) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// splitPermissionPoint 拆分 "obj:act" 为 (obj, act)。
+func splitPermissionPoint(perm string) (string, string) {
+	for i := 0; i < len(perm); i++ {
+		if perm[i] == ':' {
+			return perm[:i], perm[i+1:]
+		}
+	}
+	return perm, ""
 }

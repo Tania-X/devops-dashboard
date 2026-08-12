@@ -21,6 +21,7 @@ import type {
   GetServerListParams,
   LoginRequest,
   UpdateAgentRequest,
+  UpdateRolePermissionsRequest,
   UpdateUserRequest,
   WebhookConfigUpdate
 } from './model';
@@ -38,18 +39,6 @@ import type {
   RequestHandlerOptions
 } from 'msw';
 
-// ============================================
-// 请求拦截器:自动附加 JWT(登录后 token 存于 localStorage)
-// 所有 API 调用自动携带 Authorization: Bearer <token>
-// ============================================
-axios.default.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 import {
   AgentAuthType
 } from './model';
@@ -62,6 +51,8 @@ import type {
   DeploymentHistoryItem,
   DeploymentItem,
   HostInfo,
+  ListPermissionGroups200,
+  ListRoles200,
   LoginResponse,
   MeResponse,
   PagedResultLogItem,
@@ -70,6 +61,7 @@ import type {
   ProcessItem,
   ServerDetail,
   TestWebhookConfig200,
+  UpdateRolePermissions200,
   UserItem,
   WebhookConfig
 } from './model';
@@ -292,6 +284,44 @@ const testWebhookConfig = <TData = AxiosResponse<TestWebhookConfig200>>(
   }
 
 /**
+ * 返回全部角色及其权限点（供权限配置页矩阵渲染），admin 为通配策略锁定
+ * @summary 获取角色权限配置
+ */
+const listRoles = <TData = AxiosResponse<ListRoles200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/settings/roles`,options
+    );
+  }
+
+/**
+ * 返回权限点分组（obj 分组 + 中文标签），供权限矩阵按组渲染
+ * @summary 获取权限点分组清单
+ */
+const listPermissionGroups = <TData = AxiosResponse<ListPermissionGroups200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/settings/permissions`,options
+    );
+  }
+
+/**
+ * 覆盖更新指定角色的权限点集合并热生效（无需重新登录）。admin 角色为通配策略，不可修改。
+ * @summary 更新角色权限点
+ */
+const updateRolePermissions = <TData = AxiosResponse<UpdateRolePermissions200>>(
+    role: string,
+    updateRolePermissionsRequest: UpdateRolePermissionsRequest, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.put(
+      `/api/settings/roles/${role}`,
+      updateRolePermissionsRequest,options
+    );
+  }
+
+/**
  * 返回所有已配置的 Agent 分发目标
  * @summary 获取 Agent 目标列表
  */
@@ -424,7 +454,7 @@ const deleteUser = <TData = AxiosResponse<void>>(
     );
   }
 
-return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
+return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,listRoles,listPermissionGroups,updateRolePermissions,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
 export type LoginResult = AxiosResponse<LoginResponse>
 export type GetMeResult = AxiosResponse<MeResponse>
 export type LogoutResult = AxiosResponse<void>
@@ -442,6 +472,9 @@ export type GetHostInfoResult = AxiosResponse<HostInfo>
 export type GetWebhookConfigResult = AxiosResponse<WebhookConfig>
 export type UpdateWebhookConfigResult = AxiosResponse<WebhookConfig>
 export type TestWebhookConfigResult = AxiosResponse<TestWebhookConfig200>
+export type ListRolesResult = AxiosResponse<ListRoles200>
+export type ListPermissionGroupsResult = AxiosResponse<ListPermissionGroups200>
+export type UpdateRolePermissionsResult = AxiosResponse<UpdateRolePermissions200>
 export type GetAgentListResult = AxiosResponse<AgentTarget[]>
 export type CreateAgentResult = AxiosResponse<AgentTarget>
 export type UpdateAgentResult = AxiosResponse<AgentTarget>
@@ -486,6 +519,14 @@ export const getGetWebhookConfigResponseMock = (overrideResponse: Partial< Webho
 export const getUpdateWebhookConfigResponseMock = (overrideResponse: Partial< WebhookConfig > = {}): WebhookConfig => ({id: faker.number.int({min: undefined, max: undefined}), enabled: faker.datatype.boolean(), kind: faker.helpers.arrayElement(['dingtalk','wecom'] as const), url: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
 
 export const getTestWebhookConfigResponseMock = (overrideResponse: Partial< TestWebhookConfig200 > = {}): TestWebhookConfig200 => ({success: faker.datatype.boolean(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getListRolesResponseMock = (overrideResponse: Partial< ListRoles200 > = {}): ListRoles200 => ({roles: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.string.alpha({length: {min: 10, max: 20}}), builtin: faker.datatype.boolean(), locked: faker.datatype.boolean(), permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), ...overrideResponse})
+
+export const getListPermissionGroupsResponseMock = (overrideResponse: Partial< ListPermissionGroups200 > = {}): ListPermissionGroups200 => ({groups: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({obj: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), requires: faker.helpers.arrayElement([{
+        [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
+      }, undefined])})), ...overrideResponse})
+
+export const getUpdateRolePermissionsResponseMock = (overrideResponse: Partial< UpdateRolePermissions200 > = {}): UpdateRolePermissions200 => ({role: faker.string.alpha({length: {min: 10, max: 20}}), permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getGetAgentListResponseMock = (): AgentTarget[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), host: faker.string.alpha({length: {min: 10, max: 20}}), port: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), username: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), authType: faker.helpers.arrayElement([faker.helpers.arrayElement(Object.values(AgentAuthType)), undefined]), deployDir: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), agentPort: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), status: faker.helpers.arrayElement(['running','stopped','deploying'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])})))
 
@@ -704,6 +745,42 @@ export const getTestWebhookConfigMockHandler = (overrideResponse?: TestWebhookCo
   }, options)
 }
 
+export const getListRolesMockHandler = (overrideResponse?: ListRoles200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListRoles200> | ListRoles200), options?: RequestHandlerOptions) => {
+  return http.get('*/api/settings/roles', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListRolesResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getListPermissionGroupsMockHandler = (overrideResponse?: ListPermissionGroups200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListPermissionGroups200> | ListPermissionGroups200), options?: RequestHandlerOptions) => {
+  return http.get('*/api/settings/permissions', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListPermissionGroupsResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getUpdateRolePermissionsMockHandler = (overrideResponse?: UpdateRolePermissions200 | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<UpdateRolePermissions200> | UpdateRolePermissions200), options?: RequestHandlerOptions) => {
+  return http.put('*/api/settings/roles/:role', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getUpdateRolePermissionsResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
 export const getGetAgentListMockHandler = (overrideResponse?: AgentTarget[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AgentTarget[]> | AgentTarget[]), options?: RequestHandlerOptions) => {
   return http.get('*/api/agents', async (info) => {await delay(1000);
   
@@ -845,6 +922,9 @@ export const getDevOpsDashboardAPIMock = () => [
   getGetWebhookConfigMockHandler(),
   getUpdateWebhookConfigMockHandler(),
   getTestWebhookConfigMockHandler(),
+  getListRolesMockHandler(),
+  getListPermissionGroupsMockHandler(),
+  getUpdateRolePermissionsMockHandler(),
   getGetAgentListMockHandler(),
   getCreateAgentMockHandler(),
   getUpdateAgentMockHandler(),

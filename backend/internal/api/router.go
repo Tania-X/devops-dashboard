@@ -1,6 +1,14 @@
 package api
 
 import (
+	"net/http"
+	"time"
+
+	"log/slog"
+
+	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
+	"github.com/Tania-X/devops-dashboard/backend/internal/service"
+	"github.com/gin-gonic/gin"
 
 	// ... 现有 import
 	swaggerFiles "github.com/swaggo/files"
@@ -8,14 +16,6 @@ import (
 
 	// 导入自动生成的 docs 包
 	_ "github.com/Tania-X/devops-dashboard/backend/docs"
-
-	"net/http"
-	"time"
-
-	"log/slog"
-
-	"github.com/Tania-X/devops-dashboard/backend/internal/service"
-	"github.com/gin-gonic/gin"
 )
 
 // Handler 聚合所有 handler 所需的依赖
@@ -68,24 +68,29 @@ func (h *Handler) SetupRouter() *gin.Engine {
 			auth.GET("/auth/me", h.GetMe)
 
 			// Agent 管理路由（admin / operator）
-			auth.GET("/agents", RequirePermission("agent", "read"), h.GetAgentList)
-			auth.POST("/agents", RequirePermission("agent", "create"), h.CreateAgent)
-			auth.PUT("/agents/:id", RequirePermission("agent", "update"), h.UpdateAgent)
-			auth.DELETE("/agents/:id", RequirePermission("agent", "delete"), h.DeleteAgent)
-			auth.POST("/agents/:id/deploy", RequirePermission("agent", "deploy"), h.DeployAgent)
-			auth.POST("/agents/:id/stop", RequirePermission("agent", "stop"), h.StopAgent)
-			auth.GET("/agents/:id/status", RequirePermission("agent", "read"), h.CheckAgentStatus)
+			auth.GET("/agents", RequirePermission(authz.PermAgentRead), h.GetAgentList)
+			auth.POST("/agents", RequirePermission(authz.PermAgentCreate), h.CreateAgent)
+			auth.PUT("/agents/:id", RequirePermission(authz.PermAgentUpdate), h.UpdateAgent)
+			auth.DELETE("/agents/:id", RequirePermission(authz.PermAgentDelete), h.DeleteAgent)
+			auth.POST("/agents/:id/deploy", RequirePermission(authz.PermAgentDeploy), h.DeployAgent)
+			auth.POST("/agents/:id/stop", RequirePermission(authz.PermAgentStop), h.StopAgent)
+			auth.GET("/agents/:id/status", RequirePermission(authz.PermAgentRead), h.CheckAgentStatus)
 
 			// 用户管理路由（仅 admin）
-			auth.GET("/users", RequirePermission("user", "read"), h.GetUserList)
-			auth.POST("/users", RequirePermission("user", "create"), h.CreateUser)
-			auth.PUT("/users/:id", RequirePermission("user", "update"), h.UpdateUser)
-			auth.DELETE("/users/:id", RequirePermission("user", "delete"), h.DeleteUser)
+			auth.GET("/users", RequirePermission(authz.PermUserRead), h.GetUserList)
+			auth.POST("/users", RequirePermission(authz.PermUserCreate), h.CreateUser)
+			auth.PUT("/users/:id", RequirePermission(authz.PermUserUpdate), h.UpdateUser)
+			auth.DELETE("/users/:id", RequirePermission(authz.PermUserDelete), h.DeleteUser)
 
-			// 告警 Webhook 配置（仅 admin）
-			auth.GET("/settings/webhook", RequirePermission("webhook", "read"), h.GetWebhookConfig)
-			auth.PUT("/settings/webhook", RequirePermission("webhook", "update"), h.UpdateWebhookConfig)
-			auth.POST("/settings/webhook/test", RequirePermission("webhook", "test"), h.TestWebhookConfig)
+			// 告警 Webhook 配置（read=查看, update=配置+测试推送）
+			auth.GET("/settings/webhook", RequirePermission(authz.PermWebhookRead), h.GetWebhookConfig)
+			auth.PUT("/settings/webhook", RequirePermission(authz.PermWebhookUpdate), h.UpdateWebhookConfig)
+			auth.POST("/settings/webhook/test", RequirePermission(authz.PermWebhookUpdate), h.TestWebhookConfig)
+
+			// 角色权限配置（仅 admin，RBAC 二期）
+			auth.GET("/settings/roles", RequirePermission(authz.PermSettingsManage), h.ListRoles)
+			auth.GET("/settings/permissions", RequirePermission(authz.PermSettingsManage), h.ListPermissionGroups)
+			auth.PUT("/settings/roles/:role", RequirePermission(authz.PermSettingsManage), h.UpdateRolePermissions)
 		}
 	}
 	r.NoRoute(func(c *gin.Context) {
