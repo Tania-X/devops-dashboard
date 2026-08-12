@@ -53,30 +53,56 @@ export default function RolePermissions() {
   const currentRole = roles.find((r) => r.name === selectedRole);
   const locked = currentRole?.locked ?? false;
 
-  // 切换分组内权限（组内全选联动）
-  const togglePerm = (perm: string) => {
+  // 切换单个权限点（含前置依赖联动）：
+  //   勾选依赖点(如 webhook:update) → 自动补上被依赖点(webhook:read)
+  //   取消被依赖点(webhook:read) → 自动取消所有依赖它的点(webhook:update)
+  const togglePerm = (perm: string, group: PermissionGroup) => {
+    const requires = group.requires ?? {};
     setCheckedPerms((prev) => {
       const next = new Set(prev);
       if (next.has(perm)) {
         next.delete(perm);
+        // 若取消的是被依赖点，级联取消依赖它的权限点
+        Object.entries(requires).forEach(([dependent, base]) => {
+          if (base === perm && next.has(dependent)) {
+            next.delete(dependent);
+          }
+        });
       } else {
         next.add(perm);
+        // 勾选依赖点时自动补上被依赖点（后端也会兜底，此处为交互即时反馈）
+        if (requires[perm]) {
+          next.add(requires[perm]);
+        }
       }
       return next;
     });
   };
 
   const toggleGroup = (group: PermissionGroup) => {
+    const requires = group.requires ?? {};
     setCheckedPerms((prev) => {
       const next = new Set(prev);
       const allChecked = group.permissions.every((p) => next.has(p));
-      group.permissions.forEach((p) => {
-        if (allChecked) {
+      if (allChecked) {
+        // 整组取消：先删组内所有，再级联删依赖这些点的权限
+        group.permissions.forEach((p) => {
           next.delete(p);
-        } else {
+          Object.entries(requires).forEach(([dependent, base]) => {
+            if (base === p && next.has(dependent)) {
+              next.delete(dependent);
+            }
+          });
+        });
+      } else {
+        // 整组勾选：勾上全部 + 自动补全组内依赖链
+        group.permissions.forEach((p) => {
           next.add(p);
-        }
-      });
+          if (requires[p]) {
+            next.add(requires[p]);
+          }
+        });
+      }
       return next;
     });
   };
@@ -183,7 +209,7 @@ export default function RolePermissions() {
                       key={perm}
                       checked={checkedPerms.has(perm)}
                       disabled={locked}
-                      onChange={() => togglePerm(perm)}
+                      onChange={() => togglePerm(perm, group)}
                       style={{ marginRight: 12, color: '#ccc' }}
                     >
                       {permissionLabel(perm)}

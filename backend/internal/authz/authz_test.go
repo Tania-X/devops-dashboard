@@ -245,4 +245,47 @@ func TestUpdateRolePermissions(t *testing.T) {
 			t.Fatal("未知角色应返回错误")
 		}
 	})
+
+	t.Run("前置依赖自动补全:仅 update 无 read 时自动补 read", func(t *testing.T) {
+		// 只提交 webhook:update（不提交 webhook:read），依赖规则应自动补全 read
+		err := UpdateRolePermissions(RoleViewer, []string{PermWebhookUpdate})
+		if err != nil {
+			t.Fatalf("UpdateRolePermissions 出错: %v", err)
+		}
+		// update 本身生效
+		if ok, _ := HasPermission(RoleViewer, "webhook", "update"); !ok {
+			t.Error("viewer 应拥有 webhook:update")
+		}
+		// 依赖的 read 被自动补上（隐式继承）
+		if ok, _ := HasPermission(RoleViewer, "webhook", "read"); !ok {
+			t.Error("自动补全:viewer 应同时拥有 webhook:read")
+		}
+	})
+
+	t.Run("前置依赖不重复:已含 read 时不重复添加", func(t *testing.T) {
+		perms, err := PermissionsOf(RoleViewer)
+		if err != nil {
+			t.Fatalf("PermissionsOf 出错: %v", err)
+		}
+		// 只应出现一次 webhook:read
+		count := 0
+		for _, p := range perms {
+			if p == PermWebhookRead {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Errorf("webhook:read 应恰好 1 个,实际 %d 个: %v", count, perms)
+		}
+	})
+
+	t.Run("agent 操作类权限同样补全依赖", func(t *testing.T) {
+		err := UpdateRolePermissions(RoleViewer, []string{PermAgentDeploy})
+		if err != nil {
+			t.Fatalf("UpdateRolePermissions 出错: %v", err)
+		}
+		if ok, _ := HasPermission(RoleViewer, "agent", "read"); !ok {
+			t.Error("agent:deploy 应自动补全 agent:read")
+		}
+	})
 }

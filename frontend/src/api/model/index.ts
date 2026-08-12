@@ -47,6 +47,7 @@ export * from './networkInterface';
 export * from './pagedResultLogItem';
 export * from './pagedResultServerItem';
 export * from './permissionGroup';
+export * from './permissionGroupRequires';
 export * from './processDetail';
 export * from './processDetailAllOf';
 export * from './processItem';

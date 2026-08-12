@@ -82,10 +82,12 @@ var roleMetas = []RoleInfo{
 }
 
 // PermissionGroup 权限点分组（前端矩阵按 obj 分组渲染，组内权限点用中文标签展示）。
+// Requires 记录组内每个权限点的前置依赖（键=权限点，值=被依赖点），供前端联动勾选。
 type PermissionGroup struct {
-	Obj         string   `json:"obj"`
-	Label       string   `json:"label"`
-	Permissions []string `json:"permissions"`
+	Obj         string            `json:"obj"`
+	Label       string            `json:"label"`
+	Permissions []string          `json:"permissions"`
+	Requires    map[string]string `json:"requires,omitempty"`
 }
 
 // permissionGroups 权限点分组清单（obj → 中文名 → 该组权限点）。
@@ -105,6 +107,32 @@ var permissionGroups = []PermissionGroup{
 		PermWebhookRead, PermWebhookUpdate,
 	}},
 	{Obj: "settings", Label: "系统设置", Permissions: []string{PermSettingsManage}},
+}
+
+// permissionRequires 权限点前置依赖声明（Prerequisite Permission）。
+//
+// 语义：若角色拥有 X，则必须同时拥有 requires(X)——"操作权限依赖入口权限"。
+// 例：webhook:update 依赖 webhook:read（无 read 则设置页不可达，update 无意义）。
+// 约束：依赖必须在同一 obj 分组内；被依赖点通常是该组的 read 权限。
+// 新增权限点时：若它是"操作类"权限点，在此声明其入口依赖。
+var permissionRequires = map[string]string{
+	// webhook: 配置依赖查看
+	PermWebhookUpdate: PermWebhookRead,
+	// agent: 各操作依赖查看
+	PermAgentCreate: PermAgentRead,
+	PermAgentUpdate: PermAgentRead,
+	PermAgentDelete: PermAgentRead,
+	PermAgentDeploy: PermAgentRead,
+	PermAgentStop:   PermAgentRead,
+	// user: 各操作依赖查看
+	PermUserCreate: PermUserRead,
+	PermUserUpdate: PermUserRead,
+	PermUserDelete: PermUserRead,
+}
+
+// RequiresOf 返回权限点的前置依赖（无依赖返回空串）。
+func RequiresOf(perm string) string {
+	return permissionRequires[perm]
 }
 
 var errNotInitialized = errors.New("authz: 未初始化，请先调用 Init")
@@ -207,7 +235,21 @@ func ListRoles() ([]RoleInfo, error) {
 // PermissionGroups 返回权限点分组清单（obj 分组 + 中文标签），供前端矩阵渲染。
 // 权限点定义是代码契约（§9.6 决策），不落入数据库。
 func PermissionGroups() []PermissionGroup {
-	return permissionGroups
+	// 附上各权限点的前置依赖（仅返回本组内的依赖，避免跨组引用）
+	out := make([]PermissionGroup, len(permissionGroups))
+	copy(out, permissionGroups)
+	for i, g := range out {
+		reqs := make(map[string]string)
+		for _, perm := range g.Permissions {
+			if req := RequiresOf(perm); req != "" {
+				reqs[perm] = req
+			}
+		}
+		if len(reqs) > 0 {
+			out[i].Requires = reqs
+		}
+	}
+	return out
 }
 
 // ValidPermission 判断权限点是否在系统清单内（防止配置页提交未注册权限点）。
@@ -259,6 +301,15 @@ func UpdateRolePermissions(role string, perms []string) error {
 			return errors.New("未知权限点: " + perm)
 		}
 		valid = append(valid, perm)
+	}
+
+	// 前置依赖自动补全：若含 X 且缺 requires(X)，则补上被依赖点（隐式继承）。
+	// 保证"仅 update 无 read"之类的死配置在数据层不可能存在。
+	for _, perm := range valid {
+		if req := RequiresOf(perm); req != "" && !seen[req] {
+			seen[req] = true
+			valid = append(valid, req)
+		}
 	}
 
 	// 清空该角色现有策略

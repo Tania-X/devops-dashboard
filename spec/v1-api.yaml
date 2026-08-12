@@ -1252,6 +1252,12 @@ components:
           items:
             type: string
             example: 'agent:create'
+        requires:
+          type: object
+          description: 组内权限点的前置依赖映射（键=权限点，值=其依赖的入口权限点）。如 webhook:update → webhook:read；无依赖的分组省略此字段
+          additionalProperties:
+            type: string
+            example: 'webhook:read'
 
     UpdateRolePermissionsRequest:
       type: object
