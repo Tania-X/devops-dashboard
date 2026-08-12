@@ -30,12 +30,16 @@ export default function SettingsPage() {
 }
 
 // WebhookSettingsTab 告警 Webhook 推送配置（企业微信/钉钉机器人）
+// 权限分层:webhook:read=只读查看;webhook:update=可编辑+保存;webhook:test=测试推送
 function WebhookSettingsTab() {
   const [form] = Form.useForm<WebhookConfigUpdate>();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  const canUpdate = usePermission('webhook:update');
+  const canTest = usePermission('webhook:test');
+  const readOnly = !canUpdate; // 无 update 权限 → 表单只读
   // enabled 双向绑定：Switch 变化时同步 state 与表单（保存时统一从表单取，避免竞态）
   const syncEnabled = (checked: boolean) => {
     setEnabled(checked);
@@ -114,6 +118,7 @@ function WebhookSettingsTab() {
             <Switch
               checked={enabled}
               onChange={syncEnabled}
+              disabled={readOnly}
               checkedChildren="开"
               unCheckedChildren="关"
             />
@@ -126,6 +131,7 @@ function WebhookSettingsTab() {
           >
             <Radio.Group
               onChange={(e) => form.setFieldValue('kind', e.target.value)}
+              disabled={readOnly}
             >
               <Radio value="wecom" style={{ color: '#fff' }}>
                 企业微信 WeCom
@@ -149,6 +155,7 @@ function WebhookSettingsTab() {
           >
             <Input
               placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
+              disabled={readOnly}
               style={{ background: '#111217', color: '#fff' }}
             />
           </Form.Item>
@@ -160,6 +167,7 @@ function WebhookSettingsTab() {
           >
             <Input.Password
               placeholder="仅钉钉渠道需要，留空表示不修改"
+              disabled={readOnly}
               style={{ background: '#111217', color: '#fff' }}
             />
           </Form.Item>
@@ -173,23 +181,36 @@ function WebhookSettingsTab() {
             />
           )}
 
+          {readOnly && (
+            <Alert
+              type="warning"
+              showIcon
+              message="当前角色仅有查看权限，配置内容为只读。如需修改请联系管理员开通「配置 Webhook」权限。"
+              style={{ marginBottom: 24, background: '#2a2018', border: '1px solid #4a3a28' }}
+            />
+          )}
+
           <Space>
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              loading={saving}
-              onClick={handleSave}
-            >
-              保存
-            </Button>
-            <Button
-              icon={<SendOutlined />}
-              loading={testing}
-              disabled={!enabled}
-              onClick={handleTest}
-            >
-              测试推送
-            </Button>
+            {canUpdate && (
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={saving}
+                onClick={handleSave}
+              >
+                保存
+              </Button>
+            )}
+            {canTest && (
+              <Button
+                icon={<SendOutlined />}
+                loading={testing}
+                disabled={!enabled}
+                onClick={handleTest}
+              >
+                测试推送
+              </Button>
+            )}
           </Space>
         </Form>
       </Card>
