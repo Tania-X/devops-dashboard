@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-test.use({ channel: 'chrome' });
+// 浏览器通道由 playwright.config.js 自动探测（msedge→chrome→chromium），此处不硬编码
 
 async function login(page: Page, username: string, password: string) {
   await page.goto('http://localhost:5173/login');
