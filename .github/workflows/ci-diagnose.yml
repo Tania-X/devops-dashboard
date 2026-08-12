@@ -1,0 +1,27 @@
+# CI 失败自动诊断 — 监听 CI workflow 完成, 失败时 AI 分析日志评论到 PR
+#
+# 依赖:
+#   - Secret: DEEPSEEK_API_KEY(与 ai-review 共用)
+#   - ai-tools 仓库的 ci-diagnose action(已合并到 main, 引用 @main)
+# 说明: workflow_run 事件监听同一仓库的 CI workflow(name: CI),
+#       仅在其 conclusion == failure 时触发诊断 job。
+name: CI Diagnose
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read          # 读取 workflow 日志必需
+  pull-requests: write   # 评论 PR 必需
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - uses: Tania-X/ai-tools/ci-diagnose@main
+        with:
+          api-key: ${{ secrets.DEEPSEEK_API_KEY }}
