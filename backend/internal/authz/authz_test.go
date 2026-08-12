@@ -130,3 +130,119 @@ func TestSeedIdempotent(t *testing.T) {
 		t.Errorf("策略条数 = %d, want %d（seed 应幂等）", count, len(rolePolicies()))
 	}
 }
+
+// TestListRoles 验证角色清单包含三个预置角色且权限点正确
+func TestListRoles(t *testing.T) {
+	db := newTestDB(t)
+	if err := Init(db); err != nil {
+		t.Fatalf("Init 失败: %v", err)
+	}
+
+	roles, err := ListRoles()
+	if err != nil {
+		t.Fatalf("ListRoles 出错: %v", err)
+	}
+	if len(roles) != 3 {
+		t.Fatalf("角色数 = %d, want 3", len(roles))
+	}
+
+	byName := make(map[string]RoleInfo)
+	for _, r := range roles {
+		byName[r.Name] = r
+	}
+
+	if !byName[RoleAdmin].Locked {
+		t.Error("admin 应标记 Locked=true")
+	}
+	if byName[RoleOperator].Locked || byName[RoleViewer].Locked {
+		t.Error("operator/viewer 不应标记 Locked")
+	}
+
+	contains := func(list []string, target string) bool {
+		for _, v := range list {
+			if v == target {
+				return true
+			}
+		}
+		return false
+	}
+	if !contains(byName[RoleOperator].Permissions, PermAgentDeploy) {
+		t.Error("operator 权限应包含 agent:deploy")
+	}
+	if contains(byName[RoleViewer].Permissions, PermUserRead) {
+		t.Error("viewer 权限不应包含 user:read")
+	}
+}
+
+// TestPermissionGroups 验证权限点分组覆盖全部权限点
+func TestPermissionGroups(t *testing.T) {
+	groups := PermissionGroups()
+	if len(groups) == 0 {
+		t.Fatal("权限点分组不应为空")
+	}
+
+	// 组内权限点集合应与 allPermissions 完全一致
+	set := make(map[string]bool)
+	for _, g := range groups {
+		for _, p := range g.Permissions {
+			set[p] = true
+		}
+	}
+	if len(set) != len(allPermissions) {
+		t.Errorf("分组权限点数 = %d, allPermissions = %d，分组遗漏或多余", len(set), len(allPermissions))
+	}
+	for _, p := range allPermissions {
+		if !set[p] {
+			t.Errorf("权限点 %s 未出现在分组中", p)
+		}
+	}
+}
+
+// TestUpdateRolePermissions 验证热生效更新
+func TestUpdateRolePermissions(t *testing.T) {
+	db := newTestDB(t)
+	if err := Init(db); err != nil {
+		t.Fatalf("Init 失败: %v", err)
+	}
+
+	t.Run("viewer 更新后即时生效", func(t *testing.T) {
+		// viewer 原本不可读用户，更新后授予 user:read
+		if ok, _ := HasPermission(RoleViewer, "user", "read"); ok {
+			t.Fatal("前置条件不成立：viewer 初始不应有 user:read")
+		}
+		err := UpdateRolePermissions(RoleViewer, []string{
+			PermDashboardView, PermServerRead, PermLogRead,
+			PermDeploymentRead, PermMonitorRead, PermUserRead,
+		})
+		if err != nil {
+			t.Fatalf("UpdateRolePermissions 出错: %v", err)
+		}
+		if ok, _ := HasPermission(RoleViewer, "user", "read"); !ok {
+			t.Error("更新后 viewer 应拥有 user:read")
+		}
+		if ok, _ := HasPermission(RoleViewer, "agent", "deploy"); ok {
+			t.Error("更新后 viewer 不应拥有 agent:deploy")
+		}
+	})
+
+	t.Run("admin 锁定不可修改", func(t *testing.T) {
+		err := UpdateRolePermissions(RoleAdmin, []string{PermDashboardView})
+		if err == nil {
+			t.Fatal("修改 admin 应返回错误")
+		}
+	})
+
+	t.Run("非法权限点被拒绝", func(t *testing.T) {
+		err := UpdateRolePermissions(RoleViewer, []string{"nonexistent:read"})
+		if err == nil {
+			t.Fatal("非法权限点应返回错误")
+		}
+	})
+
+	t.Run("未知角色被拒绝", func(t *testing.T) {
+		err := UpdateRolePermissions("hacker", []string{PermDashboardView})
+		if err == nil {
+			t.Fatal("未知角色应返回错误")
+		}
+	})
+}

@@ -1,15 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Card, Switch, Radio, Input, Button, Form, message, Space, Alert, Typography } from 'antd';
+import { Card, Switch, Radio, Input, Button, Form, message, Space, Alert, Typography, Tabs } from 'antd';
 import { SendOutlined, SaveOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { WebhookConfigUpdate } from '../../api/model';
+import RolePermissions from './RolePermissions';
+import { usePermission } from '../../hooks/usePermission';
 
 const { Text } = Typography;
 
 const api = getDevOpsDashboardAPI(); // 模块级单例，避免每次渲染重建
 
-// SettingsPage 系统设置页 — 告警 Webhook 推送配置（企业微信/钉钉机器人）
+// SettingsPage 系统设置页 — Webhook 告警推送 + 角色权限配置（RBAC 二期）
 export default function SettingsPage() {
+  const canManagePermissions = usePermission('settings:manage');
+
+  return (
+    <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
+      <Tabs
+        items={[
+          { key: 'webhook', label: '告警通知', children: <WebhookSettingsTab /> },
+          ...(canManagePermissions
+            ? [{ key: 'permissions', label: '角色权限', children: <RolePermissions /> }]
+            : []),
+        ]}
+        style={{ color: '#fff' }}
+      />
+    </div>
+  );
+}
+
+// WebhookSettingsTab 告警 Webhook 推送配置（企业微信/钉钉机器人）
+function WebhookSettingsTab() {
   const [form] = Form.useForm<WebhookConfigUpdate>();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,12 +99,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
-      <Card
-        title={<span style={{ color: '#fff', fontSize: 16 }}>告警通知设置</span>}
-        style={{ background: '#1f1f1f', border: '1px solid #333', maxWidth: 720 }}
-        loading={loading}
-      >
+    <Card
+      title={<span style={{ color: '#fff', fontSize: 16 }}>告警通知设置</span>}
+      style={{ background: '#1f1f1f', border: '1px solid #333', maxWidth: 720 }}
+      loading={loading}
+    >
         <Form
           form={form}
           layout="vertical"
@@ -173,6 +193,5 @@ export default function SettingsPage() {
           </Space>
         </Form>
       </Card>
-    </div>
   );
 }
