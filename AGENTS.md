@@ -104,6 +104,34 @@ src/
 - 优先使用生成的 API Model 类型，避免重复定义接口
 - UI 层 `columns as any` 等类型绕过是允许的，但数��层必须类型安全
 
+### 3.5 开发克制原则（硬性，2026-08-12 用户明确）
+
+**写代码/加功能/修 bug 时，不要在 UI 上留多余的提示、解释文案或说明性组件。** 有什么权限就显示什么，没有就不显示；用户能自己看出状态差异，不需要界面"告诉他"。
+
+- 禁止加"当前角色仅有查看权限…"之类的能力说明 Alert/文案
+- 禁止加"此处功能需要 XX 权限"等解释性提示
+- 权限差异通过**控件本身的状态**体现（禁用/隐藏/不可达）
+- 确有必要的设计说明写进 docs/ 文档，不留在 UI
+- 违反案例：webhook 设置页曾加"仅查看权限"只读提示，被用户要求移除（设计过度）
+
+### 3.6 权限建模：前置依赖（Prerequisite Permission，硬性）
+
+**权限点之间的关系有三种：互斥 / 独立 / 依赖。依赖关系必须建模为依赖，绝不能平铺成独立开关。**
+
+- 操作类权限点（update/create/delete/deploy 等）通常依赖本模块的入口权限（read）
+- 建模方式：后端 authz.permissionRequires 映射声明 操作点→入口点；UpdateRolePermissions 提交时**自动补全**依赖点（隐式继承，不报错）
+- 前端配置矩阵据此联动：勾依赖点自动勾被依赖点；取消被依赖点级联取消依赖点
+- 新增"操作类"权限点时，**必须**在 permissionRequires 声明其依赖，否则视为建模错误
+- 理由：平铺依赖关系会产生"仅操作无入口"的死配置（可达性为 0），组合空间从 2^n 收敛到合法子集
+
+### 3.7 orval 生成文件不可手工修改（硬性）
+
+- src/api/client.ts、src/api/model/* 是 orval 生成的**产物**，重新生成会全量覆盖
+- **禁止手工修改生成文件**（历史教训：JWT 拦截器手工加进 client.ts，orval 重生成后被覆盖丢失 → 全部受保护接口 401）
+- 需要自定义逻辑（拦截器、请求封装）时，放独立文件（如 src/api/auth-interceptor.ts），由 main.tsx 导入
+- 改 API 契约 → 改 spec/v1-api.yaml → 跑 orval 重新生成（命令见 3.2）
+- orval 重生成后若大量文件显示 M 但无内容 diff，是 CRLF 换行符差异，提交时 git 自动规范化，无需处理
+
 ---
 
 ## 四、测试约定
@@ -120,6 +148,23 @@ src/
 ### 何时测
 
 按优先级：复杂逻辑函数 → 有内部状态的函数 → 返回值语义易误解的函数。纯胶水代码不测。
+
+### Playwright E2E：浏览器通道自动探测 + 权限组合矩阵（2026-08-12）
+
+- **浏览器通道**：由 `playwright.config.js` 的 `detectBrowserChannel()` 自动探测（msedge → chrome → chromium），**spec 内禁止硬编码 `test.use({ channel })`**——多电脑（本机 Edge/他机 Chrome）同一份配置通用
+- **权限类功能必须做组合矩阵测试**：权限组合空间是 2ⁿ（n=权限点数），**全量覆盖所有组合**，不能只测"有/无"两端。组合矩阵能暴露死配置（如"仅 update 无 read"菜单不可达）等依赖设计缺陷
+- 矩阵测试写法：`setViewerPerms(perms)` 通过 admin API 预置角色权限 → 登录目标用户 → 断言每个组合下的 UI 状态（菜单可见性/控件禁用/按钮显隐）
+- 登录后**不要用 `waitForLoadState('networkidle')`**（dashboard 有轮询 API 永远等不到）→ 改为等待 `.ant-menu-item` 或 `form` 渲染
+- 测试间相互隔离：每个用例开头重置角色权限（避免前一个用例的权限改动影响后一个）
+
+### 测试环境隔离（2026-08-12）
+
+- 用户自起的 dev server（8080/5173）**不要动**；测试用独立端口 + 环境变量：
+  - 后端：`PORT=8081 ./devops-api-xxx.exe`（独立 DB_PATH 测试库）
+  - 前端：`VITE_API_PROXY=http://localhost:8081 VITE_PORT=5174 node node_modules/vite/bin/vite.js`
+- `vite.config.ts` 已支持 `VITE_API_PROXY` / `VITE_PORT` 环境变量（默认 8080/5173）
+- vite 在 config 文件变化后会退出（Re-optimizing dependencies 后进程消失）→ 改配置后重启
+- 后台启动 + 端口占用排查：启动前先 `netstat` 确认目标端口空闲
 
 ---
 
