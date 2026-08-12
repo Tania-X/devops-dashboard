@@ -1,6 +1,7 @@
 # AI PR Review — 自建 CodeRabbit 替代
 #
-# 触发: 任意 PR 打开或更新(目标 main)时, 用 LLM 审查 diff 并发表整体 review 评论。
+# 触发: 任意 PR 打开或更新(目标 main)时, 用 LLM 审查 diff 并发表整体 review 评论;
+#       开发者在线程里回复 AI 审查意见时, AI 在线程内简洁回答(交互)。
 # 依赖:
 #   - Secret: DEEPSEEK_API_KEY(仓库 Settings -> Secrets and variables -> Actions)
 #   - ai-tools 仓库的 pr-review action(已合并到 main, 引用 @main)
@@ -13,6 +14,8 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize]
+  pull_request_review_comment:
+    types: [created]
 
 permissions:
   contents: read
