@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ConfigProvider, theme } from 'antd'
 import './index.css'
+import './api/auth-interceptor' // 注册 axios 请求拦截器（自动附加 JWT，独立于 orval 生成文件）
 import App from './App.tsx'
 
 async function bootstrap() {

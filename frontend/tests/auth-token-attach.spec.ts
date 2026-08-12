@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-test.use({ channel: 'chrome' });
+test.use({ channel: 'msedge' });
 
 async function login(page: Page) {
   await page.goto('http://localhost:5173/login');
