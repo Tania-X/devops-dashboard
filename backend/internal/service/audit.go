@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
@@ -42,8 +43,10 @@ func (s *AuditService) Record(actor, action, target, detail string) {
 		Detail:    detail,
 		CreatedAt: time.Now(),
 	}
-	// 审计失败只记日志不向上抛错（审计是旁路，不影响主流程）
-	_ = s.db.Create(&log).Error
+	// 审计写入失败时记录错误日志（审计是旁路，不阻断主操作，但失败必须可见）
+	if err := s.db.Create(&log).Error; err != nil {
+		slog.Error("写入审计日志失败", "actor", actor, "action", action, "err", err)
+	}
 }
 
 // List 分页查询审计日志（新→旧）。

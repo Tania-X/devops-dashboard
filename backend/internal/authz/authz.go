@@ -332,7 +332,7 @@ func UpdateRole(name string, upd model.UpdateRoleRequest) error {
 		updates["description"] = upd.Description
 	}
 	if len(updates) == 0 {
-		return nil
+		return errors.New("没有可更新的字段")
 	}
 	return db.Model(&role).Updates(updates).Error
 }
