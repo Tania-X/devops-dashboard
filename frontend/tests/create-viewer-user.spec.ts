@@ -36,7 +36,8 @@ test.describe('新增观察者用户排查', () => {
 
     expect(res.status()).toBe(201);
     expect(body.role).toBe('viewer');
-    expect(body.password).toBe('');
+    // 安全断言: 响应不得泄露密码字段(后端 User 模型 json:"-" 排除,故 password 应为 undefined)
+    expect(body.password).toBeUndefined();
   });
 
   test('UI 全流程: 新增 test/test/观察者', async ({ page }) => {
