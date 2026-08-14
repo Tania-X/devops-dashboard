@@ -10,6 +10,7 @@ package authz
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sort"
 
@@ -300,8 +301,9 @@ func CreateRole(role model.Role) error {
 	}
 	// 兜底：清理该角色名可能残留的孤儿 Casbin 策略（DeleteRole 清理失败时遗留）。
 	// 若不清理，同名角色重建后 Enforce 会命中残留策略 → 新角色凭空获得旧权限（越权）。
+	// 兜底清理失败视为数据库异常，拒绝创建（fail-closed），避免带病上线。
 	if _, err := enforcer.RemoveFilteredPolicy(0, role.Name); err != nil {
-		slog.Warn("创建角色前清理残留策略失败", "role", role.Name, "err", err)
+		return fmt.Errorf("创建角色前清理残留策略失败: %w", err)
 	}
 	if err := db.Create(&role).Error; err != nil {
 		return err
@@ -359,7 +361,9 @@ func DeleteRole(name string) error {
 	if err := db.Delete(&role).Error; err != nil {
 		return err
 	}
-	// 再清理 Casbin 策略：角色已删，若清理失败则残留孤儿策略（无害脏数据，无人能命中该角色名），记日志便于排查
+	// 再清理 Casbin 策略。清理失败仅记日志不回滚：
+	//   ① DB 角色已删，返回错误会让调用方误以为"删除失败"（实际已删），状态更混乱
+	//   ② 残留孤儿策略无害：同名角色重建时 CreateRole 兜底清理，且兜底失败会拒绝创建（fail-closed）
 	if _, err := enforcer.RemoveFilteredPolicy(0, name); err != nil {
 		slog.Warn("删除角色后清理策略失败", "role", name, "err", err)
 	}
