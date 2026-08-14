@@ -158,8 +158,14 @@ func (h *Handler) UpdateRolePermissions(c *gin.Context) {
 		ErrorJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	// 审计：记录权限变更
-	perms, _ := authz.PermissionsOf(role)
+	// 审计：记录权限变更（PermissionsOf 失败时记录错误信息，不静默忽略）
+	perms, err := authz.PermissionsOf(role)
+	if err != nil {
+		h.services.AuditService.Record(currentUsername(c), service.ActionPermissionUpdate, "角色 "+role,
+			"<获取权限失败: "+err.Error()+">")
+		ErrorJSON(c, http.StatusInternalServerError, err.Error())
+		return
+	}
 	h.services.AuditService.Record(currentUsername(c), service.ActionPermissionUpdate, "角色 "+role, stringify(perms))
 	// 返回更新后的角色权限，供前端刷新
 	c.JSON(http.StatusOK, gin.H{"role": role, "permissions": perms})
