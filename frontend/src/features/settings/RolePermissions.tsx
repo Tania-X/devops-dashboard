@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Button, message, Space, Tag, Select, Checkbox, Alert, Empty } from 'antd';
-import { SaveOutlined, ReloadOutlined, LockOutlined } from '@ant-design/icons';
+import { Card, Button, message, Space, Tag, Select, Checkbox, Alert, Empty, Modal, Form, Input, Popconfirm } from 'antd';
+import { SaveOutlined, ReloadOutlined, LockOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
-import type { RoleInfo, PermissionGroup } from '../../api/model';
+import type { RoleInfo, PermissionGroup, CreateRoleRequest } from '../../api/model';
 import { permissionLabel } from './permissionLabels';
 
 const api = getDevOpsDashboardAPI(); // 模块级单例
@@ -123,6 +123,64 @@ export default function RolePermissions() {
     }
   };
 
+  // ---- 角色管理（新建/编辑/删除自定义角色）----
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<RoleInfo | null>(null);
+  const [roleForm] = Form.useForm<CreateRoleRequest>();
+
+  const openCreateRole = () => {
+    setEditingRole(null);
+    roleForm.resetFields();
+    setRoleModalOpen(true);
+  };
+
+  const openEditRole = () => {
+    if (!currentRole || currentRole.builtin) return;
+    setEditingRole(currentRole);
+    roleForm.setFieldsValue({
+      name: currentRole.name,
+      label: currentRole.label,
+      description: currentRole.description,
+    });
+    setRoleModalOpen(true);
+  };
+
+  const handleRoleModalOk = async () => {
+    try {
+      const values = await roleForm.validateFields();
+      if (editingRole) {
+        await api.updateRoleMeta(editingRole.name, {
+          label: values.label,
+          description: values.description,
+        });
+        message.success('角色已更新');
+      } else {
+        await api.createRole({
+          name: values.name,
+          label: values.label,
+          description: values.description,
+        });
+        message.success('角色已创建');
+      }
+      setRoleModalOpen(false);
+      await load();
+    } catch (err: any) {
+      if (err?.errorFields) return; // 表单校验失败
+      message.error(err?.response?.data?.error || '操作失败');
+    }
+  };
+
+  const handleDeleteRole = async () => {
+    if (!currentRole) return;
+    try {
+      await api.deleteRole(currentRole.name);
+      message.success('角色已删除');
+      await load();
+    } catch (err: any) {
+      message.error(err?.response?.data?.error || '删除失败');
+    }
+  };
+
   return (
     <Card
       title={<span style={{ color: '#fff', fontSize: 16 }}>角色权限配置</span>}
@@ -155,7 +213,67 @@ export default function RolePermissions() {
         {currentRole && (
           <Tag color={currentRole.locked ? 'gold' : 'blue'}>{currentRole.description}</Tag>
         )}
+        <Button
+          type="dashed"
+          size="small"
+          icon={<PlusOutlined />}
+          onClick={openCreateRole}
+        >
+          新建角色
+        </Button>
+        <Button
+          size="small"
+          icon={<EditOutlined />}
+          disabled={!currentRole || currentRole.builtin}
+          onClick={openEditRole}
+        >
+          编辑
+        </Button>
+        <Popconfirm
+          title="删除角色"
+          description={currentRole ? `确定删除角色「${currentRole.label}」？其下用户需先转移。` : ''}
+          disabled={!currentRole || currentRole.builtin}
+          onConfirm={handleDeleteRole}
+        >
+          <Button
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            disabled={!currentRole || currentRole.builtin}
+          >
+            删除
+          </Button>
+        </Popconfirm>
       </Space>
+
+      {/* 角色新建/编辑弹窗 */}
+      <Modal
+        title={editingRole ? '编辑角色' : '新建角色'}
+        open={roleModalOpen}
+        onOk={handleRoleModalOk}
+        onCancel={() => setRoleModalOpen(false)}
+        okText={editingRole ? '保存' : '创建'}
+        cancelText="取消"
+      >
+        <Form form={roleForm} layout="vertical">
+          <Form.Item
+            label="角色标识"
+            name="name"
+            rules={[
+              { required: true, message: '请输入角色标识' },
+              { pattern: /^[a-z0-9]+(-[a-z0-9]+)*$/, message: '小写字母/数字/连字符，2-32 位' },
+            ]}
+          >
+            <Input placeholder="如 auditor" disabled={!!editingRole} />
+          </Form.Item>
+          <Form.Item label="显示名" name="label" rules={[{ required: true, message: '请输入显示名' }]}>
+            <Input placeholder="如 审计员" />
+          </Form.Item>
+          <Form.Item label="说明" name="description">
+            <Input placeholder="角色用途说明（可选）" />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {locked ? (
         <Alert

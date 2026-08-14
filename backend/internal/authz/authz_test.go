@@ -3,6 +3,7 @@ package authz
 import (
 	"testing"
 
+	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
@@ -13,6 +14,10 @@ func newTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open("file:authz_test?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("创建测试库失败: %v", err)
+	}
+	// 角色 CRUD 需要 roles 表（与生产 AutoMigrate 对齐）
+	if err := db.AutoMigrate(&model.Role{}, &model.User{}); err != nil {
+		t.Fatalf("迁移测试表失败: %v", err)
 	}
 	return db
 }
@@ -286,6 +291,113 @@ func TestUpdateRolePermissions(t *testing.T) {
 		}
 		if ok, _ := HasPermission(RoleViewer, "agent", "read"); !ok {
 			t.Error("agent:deploy 应自动补全 agent:read")
+		}
+	})
+}
+
+// TestRoleCRUD 角色管理 CRUD 测试（RBAC 三期）
+func TestRoleCRUD(t *testing.T) {
+	db := newTestDB(t)
+	if err := Init(db); err != nil {
+		t.Fatalf("Init 失败: %v", err)
+	}
+
+	t.Run("seed 后内置角色存在", func(t *testing.T) {
+		for _, name := range []string{RoleAdmin, RoleOperator, RoleViewer} {
+			if !RoleExists(name) {
+				t.Errorf("内置角色 %s 应存在", name)
+			}
+		}
+	})
+
+	t.Run("创建自定义角色", func(t *testing.T) {
+		err := CreateRole(model.Role{Name: "auditor", Label: "审计员", Description: "只读+审计"})
+		if err != nil {
+			t.Fatalf("创建角色失败: %v", err)
+		}
+		if !RoleExists("auditor") {
+			t.Error("auditor 应存在")
+		}
+	})
+
+	t.Run("重复创建被拒绝", func(t *testing.T) {
+		err := CreateRole(model.Role{Name: "auditor", Label: "审计员2"})
+		if err == nil {
+			t.Error("重复创建应返回错误")
+		}
+	})
+
+	t.Run("内置角色名被保留", func(t *testing.T) {
+		err := CreateRole(model.Role{Name: "admin", Label: "伪造"})
+		if err == nil {
+			t.Error("内置角色名不可重复创建")
+		}
+	})
+
+	t.Run("非法角色名被拒绝", func(t *testing.T) {
+		for _, bad := range []string{"AUDITOR", "a b", "-bad", "bad-", "a"} {
+			if err := CreateRole(model.Role{Name: bad, Label: "x"}); err == nil {
+				t.Errorf("非法角色名 %q 应被拒绝", bad)
+			}
+		}
+	})
+
+	t.Run("更新角色描述", func(t *testing.T) {
+		err := UpdateRole("auditor", model.UpdateRoleRequest{Description: "审计日志查看"})
+		if err != nil {
+			t.Fatalf("更新角色失败: %v", err)
+		}
+		roles, _ := ListRoles()
+		for _, r := range roles {
+			if r.Name == "auditor" && r.Description != "审计日志查看" {
+				t.Error("描述应更新")
+			}
+		}
+	})
+
+	t.Run("内置角色显示名不可改", func(t *testing.T) {
+		err := UpdateRole(RoleViewer, model.UpdateRoleRequest{Label: "观察者X"})
+		if err == nil {
+			t.Error("内置角色显示名应不可修改")
+		}
+	})
+
+	t.Run("有用户绑定的角色不可删", func(t *testing.T) {
+		// 创建用户绑定 auditor 角色
+		u := model.User{ID: "u1", Username: "tester", Password: "x", Role: "auditor"}
+		if err := db.Create(&u).Error; err != nil {
+			t.Fatalf("创建测试用户失败: %v", err)
+		}
+		err := DeleteRole("auditor")
+		if err == nil {
+			t.Error("有用户绑定的角色删除应被拒绝")
+		}
+		// 删除用户后可删角色
+		db.Delete(&u)
+		if err := DeleteRole("auditor"); err != nil {
+			t.Errorf("无用户绑定后删除应成功: %v", err)
+		}
+		if RoleExists("auditor") {
+			t.Error("auditor 应已被删除")
+		}
+	})
+
+	t.Run("内置角色不可删", func(t *testing.T) {
+		err := DeleteRole(RoleViewer)
+		if err == nil {
+			t.Error("内置角色删除应被拒绝")
+		}
+	})
+
+	t.Run("自定义角色权限可配置", func(t *testing.T) {
+		if err := CreateRole(model.Role{Name: "ops2", Label: "运维2"}); err != nil {
+			t.Fatalf("创建角色失败: %v", err)
+		}
+		if err := UpdateRolePermissions("ops2", []string{PermDashboardView}); err != nil {
+			t.Fatalf("配置权限失败: %v", err)
+		}
+		if ok, _ := HasPermission("ops2", "dashboard", "view"); !ok {
+			t.Error("ops2 应有 dashboard:view")
 		}
 	})
 }

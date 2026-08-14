@@ -4,6 +4,7 @@ import { SendOutlined, SaveOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { WebhookConfigUpdate } from '../../api/model';
 import RolePermissions from './RolePermissions';
+import AuditLogs from './AuditLogs';
 import { usePermission } from '../../hooks/usePermission';
 
 const { Text } = Typography;
@@ -20,7 +21,10 @@ export default function SettingsPage() {
         items={[
           { key: 'webhook', label: '告警通知', children: <WebhookSettingsTab /> },
           ...(canManagePermissions
-            ? [{ key: 'permissions', label: '角色权限', children: <RolePermissions /> }]
+            ? [
+                { key: 'permissions', label: '角色权限', children: <RolePermissions /> },
+                { key: 'audit', label: '审计日志', children: <AuditLogs /> },
+              ]
             : []),
         ]}
         style={{ color: '#fff' }}

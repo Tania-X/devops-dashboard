@@ -13,15 +13,18 @@ import type {
 
 import type {
   CreateAgentRequest,
+  CreateRoleRequest,
   CreateUserRequest,
   GetDashboardAlertsParams,
   GetDashboardTrendParams,
   GetLogListParams,
   GetProcessListParams,
   GetServerListParams,
+  ListAuditLogsParams,
   LoginRequest,
   UpdateAgentRequest,
   UpdateRolePermissionsRequest,
+  UpdateRoleRequest,
   UpdateUserRequest,
   WebhookConfigUpdate
 } from './model';
@@ -46,11 +49,14 @@ import type {
   AgentStatus,
   AgentTarget,
   AlertItem,
+  CreateRole201,
   DashboardMetrics,
   DashboardTrend,
+  DeleteRole200,
   DeploymentHistoryItem,
   DeploymentItem,
   HostInfo,
+  ListAuditLogs200,
   ListPermissionGroups200,
   ListRoles200,
   LoginResponse,
@@ -61,6 +67,7 @@ import type {
   ProcessItem,
   ServerDetail,
   TestWebhookConfig200,
+  UpdateRoleMeta200,
   UpdateRolePermissions200,
   UserItem,
   WebhookConfig
@@ -284,6 +291,19 @@ const testWebhookConfig = <TData = AxiosResponse<TestWebhookConfig200>>(
   }
 
 /**
+ * 创建空权限的自定义角色（默认无任何权限，需后续配置）
+ * @summary 创建自定义角色
+ */
+const createRole = <TData = AxiosResponse<CreateRole201>>(
+    createRoleRequest: CreateRoleRequest, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.post(
+      `/api/settings/roles`,
+      createRoleRequest,options
+    );
+  }
+
+/**
  * 返回全部角色及其权限点（供权限配置页矩阵渲染），admin 为通配策略锁定
  * @summary 获取角色权限配置
  */
@@ -318,6 +338,46 @@ const updateRolePermissions = <TData = AxiosResponse<UpdateRolePermissions200>>(
     return axios.default.put(
       `/api/settings/roles/${role}`,
       updateRolePermissionsRequest,options
+    );
+  }
+
+/**
+ * 内置角色不可删；有用户绑定的角色不可删（需先转移用户）；删除时清理其 Casbin 策略
+ * @summary 删除自定义角色
+ */
+const deleteRole = <TData = AxiosResponse<DeleteRole200>>(
+    role: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.delete(
+      `/api/settings/roles/${role}`,options
+    );
+  }
+
+/**
+ * 角色名称不可修改；内置角色显示名锁定（仅改描述）
+ * @summary 更新角色显示名/描述
+ */
+const updateRoleMeta = <TData = AxiosResponse<UpdateRoleMeta200>>(
+    role: string,
+    updateRoleRequest: UpdateRoleRequest, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.put(
+      `/api/settings/roles/${role}/meta`,
+      updateRoleRequest,options
+    );
+  }
+
+/**
+ * 返回敏感管理操作日志（角色/权限/用户增删改），按时间倒序
+ * @summary 分页查询审计日志
+ */
+const listAuditLogs = <TData = AxiosResponse<ListAuditLogs200>>(
+    params?: ListAuditLogsParams, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/settings/audit-logs`,{
+    ...options,
+        params: {...params, ...options?.params},}
     );
   }
 
@@ -454,7 +514,7 @@ const deleteUser = <TData = AxiosResponse<void>>(
     );
   }
 
-return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,listRoles,listPermissionGroups,updateRolePermissions,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
+return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,createRole,listRoles,listPermissionGroups,updateRolePermissions,deleteRole,updateRoleMeta,listAuditLogs,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
 export type LoginResult = AxiosResponse<LoginResponse>
 export type GetMeResult = AxiosResponse<MeResponse>
 export type LogoutResult = AxiosResponse<void>
@@ -472,9 +532,13 @@ export type GetHostInfoResult = AxiosResponse<HostInfo>
 export type GetWebhookConfigResult = AxiosResponse<WebhookConfig>
 export type UpdateWebhookConfigResult = AxiosResponse<WebhookConfig>
 export type TestWebhookConfigResult = AxiosResponse<TestWebhookConfig200>
+export type CreateRoleResult = AxiosResponse<CreateRole201>
 export type ListRolesResult = AxiosResponse<ListRoles200>
 export type ListPermissionGroupsResult = AxiosResponse<ListPermissionGroups200>
 export type UpdateRolePermissionsResult = AxiosResponse<UpdateRolePermissions200>
+export type DeleteRoleResult = AxiosResponse<DeleteRole200>
+export type UpdateRoleMetaResult = AxiosResponse<UpdateRoleMeta200>
+export type ListAuditLogsResult = AxiosResponse<ListAuditLogs200>
 export type GetAgentListResult = AxiosResponse<AgentTarget[]>
 export type CreateAgentResult = AxiosResponse<AgentTarget>
 export type UpdateAgentResult = AxiosResponse<AgentTarget>
@@ -520,6 +584,8 @@ export const getUpdateWebhookConfigResponseMock = (overrideResponse: Partial< We
 
 export const getTestWebhookConfigResponseMock = (overrideResponse: Partial< TestWebhookConfig200 > = {}): TestWebhookConfig200 => ({success: faker.datatype.boolean(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
+export const getCreateRoleResponseMock = (overrideResponse: Partial< CreateRole201 > = {}): CreateRole201 => ({role: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), label: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
 export const getListRolesResponseMock = (overrideResponse: Partial< ListRoles200 > = {}): ListRoles200 => ({roles: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.string.alpha({length: {min: 10, max: 20}}), builtin: faker.datatype.boolean(), locked: faker.datatype.boolean(), permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), ...overrideResponse})
 
 export const getListPermissionGroupsResponseMock = (overrideResponse: Partial< ListPermissionGroups200 > = {}): ListPermissionGroups200 => ({groups: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({obj: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), requires: faker.helpers.arrayElement([{
@@ -527,6 +593,12 @@ export const getListPermissionGroupsResponseMock = (overrideResponse: Partial< L
       }, undefined])})), ...overrideResponse})
 
 export const getUpdateRolePermissionsResponseMock = (overrideResponse: Partial< UpdateRolePermissions200 > = {}): UpdateRolePermissions200 => ({role: faker.string.alpha({length: {min: 10, max: 20}}), permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getDeleteRoleResponseMock = (overrideResponse: Partial< DeleteRole200 > = {}): DeleteRole200 => ({role: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), deleted: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), ...overrideResponse})
+
+export const getUpdateRoleMetaResponseMock = (overrideResponse: Partial< UpdateRoleMeta200 > = {}): UpdateRoleMeta200 => ({role: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getListAuditLogsResponseMock = (overrideResponse: Partial< ListAuditLogs200 > = {}): ListAuditLogs200 => ({items: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), actor: faker.string.alpha({length: {min: 10, max: 20}}), action: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.string.alpha({length: {min: 10, max: 20}}), detail: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`})), total: faker.number.int({min: undefined, max: undefined}), ...overrideResponse})
 
 export const getGetAgentListResponseMock = (): AgentTarget[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), host: faker.string.alpha({length: {min: 10, max: 20}}), port: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), username: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), authType: faker.helpers.arrayElement([faker.helpers.arrayElement(Object.values(AgentAuthType)), undefined]), deployDir: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), agentPort: faker.helpers.arrayElement([faker.number.int({min: undefined, max: undefined}), undefined]), status: faker.helpers.arrayElement(['running','stopped','deploying'] as const), createdAt: `${faker.date.past().toISOString().split('.')[0]}Z`, updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])})))
 
@@ -745,6 +817,18 @@ export const getTestWebhookConfigMockHandler = (overrideResponse?: TestWebhookCo
   }, options)
 }
 
+export const getCreateRoleMockHandler = (overrideResponse?: CreateRole201 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<CreateRole201> | CreateRole201), options?: RequestHandlerOptions) => {
+  return http.post('*/api/settings/roles', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateRoleResponseMock()),
+      { status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
 export const getListRolesMockHandler = (overrideResponse?: ListRoles200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListRoles200> | ListRoles200), options?: RequestHandlerOptions) => {
   return http.get('*/api/settings/roles', async (info) => {await delay(1000);
   
@@ -775,6 +859,42 @@ export const getUpdateRolePermissionsMockHandler = (overrideResponse?: UpdateRol
     return new HttpResponse(JSON.stringify(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getUpdateRolePermissionsResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getDeleteRoleMockHandler = (overrideResponse?: DeleteRole200 | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<DeleteRole200> | DeleteRole200), options?: RequestHandlerOptions) => {
+  return http.delete('*/api/settings/roles/:role', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getDeleteRoleResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getUpdateRoleMetaMockHandler = (overrideResponse?: UpdateRoleMeta200 | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<UpdateRoleMeta200> | UpdateRoleMeta200), options?: RequestHandlerOptions) => {
+  return http.put('*/api/settings/roles/:role/meta', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getUpdateRoleMetaResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getListAuditLogsMockHandler = (overrideResponse?: ListAuditLogs200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListAuditLogs200> | ListAuditLogs200), options?: RequestHandlerOptions) => {
+  return http.get('*/api/settings/audit-logs', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListAuditLogsResponseMock()),
       { status: 200,
         headers: { 'Content-Type': 'application/json' }
       })
@@ -922,9 +1042,13 @@ export const getDevOpsDashboardAPIMock = () => [
   getGetWebhookConfigMockHandler(),
   getUpdateWebhookConfigMockHandler(),
   getTestWebhookConfigMockHandler(),
+  getCreateRoleMockHandler(),
   getListRolesMockHandler(),
   getListPermissionGroupsMockHandler(),
   getUpdateRolePermissionsMockHandler(),
+  getDeleteRoleMockHandler(),
+  getUpdateRoleMetaMockHandler(),
+  getListAuditLogsMockHandler(),
   getGetAgentListMockHandler(),
   getCreateAgentMockHandler(),
   getUpdateAgentMockHandler(),

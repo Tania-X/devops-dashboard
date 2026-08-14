@@ -91,6 +91,12 @@ func (h *Handler) SetupRouter() *gin.Engine {
 			auth.GET("/settings/roles", RequirePermission(authz.PermSettingsManage), h.ListRoles)
 			auth.GET("/settings/permissions", RequirePermission(authz.PermSettingsManage), h.ListPermissionGroups)
 			auth.PUT("/settings/roles/:role", RequirePermission(authz.PermSettingsManage), h.UpdateRolePermissions)
+
+			// 角色管理（仅 admin，RBAC 三期：自定义角色 CRUD + 审计）
+			auth.POST("/settings/roles", RequirePermission(authz.PermSettingsManage), h.CreateRole)
+			auth.PUT("/settings/roles/:role/meta", RequirePermission(authz.PermSettingsManage), h.UpdateRole)
+			auth.DELETE("/settings/roles/:role", RequirePermission(authz.PermSettingsManage), h.DeleteRole)
+			auth.GET("/settings/audit-logs", RequirePermission(authz.PermSettingsManage), h.ListAuditLogs)
 		}
 	}
 	r.NoRoute(func(c *gin.Context) {
