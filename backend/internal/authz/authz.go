@@ -10,6 +10,7 @@ package authz
 import (
 	_ "embed"
 	"errors"
+	"log/slog"
 	"sort"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
@@ -346,24 +347,28 @@ func DeleteRole(name string) error {
 	if userCount > 0 {
 		return errors.New("该角色下存在用户，请先转移用户再删除")
 	}
-	// 清理 Casbin 策略
-	if _, err := enforcer.RemoveFilteredPolicy(0, name); err != nil {
-		return err
-	}
+	// 先删 DB 角色记录：失败则策略未动，DB 与策略保持一致（不会出现"角色在但权限被撤"的破坏性状态）
 	if err := db.Delete(&role).Error; err != nil {
 		return err
+	}
+	// 再清理 Casbin 策略：角色已删，若清理失败则残留孤儿策略（无害脏数据，无人能命中该角色名），记日志便于排查
+	if _, err := enforcer.RemoveFilteredPolicy(0, name); err != nil {
+		slog.Warn("删除角色后清理策略失败", "role", name, "err", err)
 	}
 	return enforcer.LoadPolicy()
 }
 
 // RoleExists 判断角色是否存在（用户创建/更新时校验角色合法性用）。
-func RoleExists(name string) bool {
+// 返回 (bool, error)：数据库查询失败时返回错误，避免调用方误判角色不存在。
+func RoleExists(name string) (bool, error) {
 	if db == nil {
-		return false
+		return false, errNotInitialized
 	}
 	var count int64
-	db.Model(&model.Role{}).Where("name = ?", name).Count(&count)
-	return count > 0
+	if err := db.Model(&model.Role{}).Where("name = ?", name).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // validRoleName 校验自定义角色名格式：小写字母/数字/连字符，长度 2-32。

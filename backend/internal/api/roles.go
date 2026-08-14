@@ -74,7 +74,14 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 		ErrorJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	after, _ := authz.ListRoles()
+	after, err := authz.ListRoles()
+	if err != nil {
+		// 更新已成功，仅审计的 after 部分获取失败：记录失败信息，不阻塞接口返回
+		h.services.AuditService.Record(currentUsername(c), service.ActionRoleUpdate, "角色 "+name,
+			"before="+rolesSummary(before, name)+" after=<获取失败: "+err.Error()+">")
+		c.JSON(http.StatusOK, gin.H{"role": name})
+		return
+	}
 	h.services.AuditService.Record(currentUsername(c), service.ActionRoleUpdate, "角色 "+name,
 		"before="+rolesSummary(before, name)+" after="+rolesSummary(after, name))
 	c.JSON(http.StatusOK, gin.H{"role": name})

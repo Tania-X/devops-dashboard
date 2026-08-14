@@ -304,7 +304,11 @@ func TestRoleCRUD(t *testing.T) {
 
 	t.Run("seed 后内置角色存在", func(t *testing.T) {
 		for _, name := range []string{RoleAdmin, RoleOperator, RoleViewer} {
-			if !RoleExists(name) {
+			ok, err := RoleExists(name)
+			if err != nil {
+				t.Fatalf("RoleExists 出错: %v", err)
+			}
+			if !ok {
 				t.Errorf("内置角色 %s 应存在", name)
 			}
 		}
@@ -315,7 +319,11 @@ func TestRoleCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("创建角色失败: %v", err)
 		}
-		if !RoleExists("auditor") {
+		ok, err := RoleExists("auditor")
+		if err != nil {
+			t.Fatalf("RoleExists 出错: %v", err)
+		}
+		if !ok {
 			t.Error("auditor 应存在")
 		}
 	})
@@ -377,7 +385,11 @@ func TestRoleCRUD(t *testing.T) {
 		if err := DeleteRole("auditor"); err != nil {
 			t.Errorf("无用户绑定后删除应成功: %v", err)
 		}
-		if RoleExists("auditor") {
+		ok, err := RoleExists("auditor")
+		if err != nil {
+			t.Fatalf("RoleExists 出错: %v", err)
+		}
+		if ok {
 			t.Error("auditor 应已被删除")
 		}
 	})
@@ -398,6 +410,38 @@ func TestRoleCRUD(t *testing.T) {
 		}
 		if ok, _ := HasPermission("ops2", "dashboard", "view"); !ok {
 			t.Error("ops2 应有 dashboard:view")
+		}
+	})
+
+	t.Run("删除角色后 Casbin 策略同步清理", func(t *testing.T) {
+		// 准备:创建角色并配置权限
+		if err := CreateRole(model.Role{Name: "temp-role", Label: "临时角色"}); err != nil {
+			t.Fatalf("创建角色失败: %v", err)
+		}
+		if err := UpdateRolePermissions("temp-role", []string{PermDashboardView, PermServerRead}); err != nil {
+			t.Fatalf("配置权限失败: %v", err)
+		}
+		if ok, _ := HasPermission("temp-role", "dashboard", "view"); !ok {
+			t.Fatal("删除前 temp-role 应有权限")
+		}
+
+		// 执行删除
+		if err := DeleteRole("temp-role"); err != nil {
+			t.Fatalf("删除角色失败: %v", err)
+		}
+
+		// DB 记录已删
+		ok, err := RoleExists("temp-role")
+		if err != nil {
+			t.Fatalf("RoleExists 出错: %v", err)
+		}
+		if ok {
+			t.Error("temp-role 应已从 DB 删除")
+		}
+		// 策略同步清理（角色已删，残留策略为孤儿数据；此处验证 Casbin 引擎中该角色不再有生效策略）
+		policies, _ := enforcer.GetFilteredPolicy(0, "temp-role")
+		if len(policies) > 0 {
+			t.Errorf("删除后 temp-role 仍残留 %d 条策略", len(policies))
 		}
 	})
 }
