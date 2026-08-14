@@ -11,13 +11,16 @@ const { Text } = Typography;
 
 const api = getDevOpsDashboardAPI(); // 模块级单例，避免每次渲染重建
 
-// SettingsPage 系统设置页 — Webhook 告警推送 + 角色权限配置（RBAC 二期）
+// SettingsPage 系统设置页 — Webhook 告警推送 + 角色权限配置 + 审计日志
+// destroyOnHidden:切走时销毁 Tab 面板,下次切回重新挂载 → 各面板数据总是最新的
+// (如新建角色后切到审计日志能立即看到记录,无需重登/手动刷新)
 export default function SettingsPage() {
   const canManagePermissions = usePermission('settings:manage');
 
   return (
     <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
       <Tabs
+        destroyOnHidden
         items={[
           { key: 'webhook', label: '告警通知', children: <WebhookSettingsTab /> },
           ...(canManagePermissions
