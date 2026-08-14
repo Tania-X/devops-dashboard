@@ -298,7 +298,15 @@ func CreateRole(role model.Role) error {
 	if count > 0 {
 		return errors.New("角色已存在: " + role.Name)
 	}
-	return db.Create(&role).Error
+	// 兜底：清理该角色名可能残留的孤儿 Casbin 策略（DeleteRole 清理失败时遗留）。
+	// 若不清理，同名角色重建后 Enforce 会命中残留策略 → 新角色凭空获得旧权限（越权）。
+	if _, err := enforcer.RemoveFilteredPolicy(0, role.Name); err != nil {
+		slog.Warn("创建角色前清理残留策略失败", "role", role.Name, "err", err)
+	}
+	if err := db.Create(&role).Error; err != nil {
+		return err
+	}
+	return enforcer.LoadPolicy()
 }
 
 // UpdateRole 更新角色的显示名/描述（名称不可修改）。

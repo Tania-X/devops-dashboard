@@ -444,4 +444,44 @@ func TestRoleCRUD(t *testing.T) {
 			t.Errorf("删除后 temp-role 仍残留 %d 条策略", len(policies))
 		}
 	})
+
+	t.Run("删除后重建同名角色:权限干净无残留(越权防护)", func(t *testing.T) {
+		// 准备:创建带权限的角色
+		if err := CreateRole(model.Role{Name: "rebuild-role", Label: "重建角色"}); err != nil {
+			t.Fatalf("创建角色失败: %v", err)
+		}
+		if err := UpdateRolePermissions("rebuild-role", []string{PermDashboardView, PermServerRead}); err != nil {
+			t.Fatalf("配置权限失败: %v", err)
+		}
+
+		// 删除
+		if err := DeleteRole("rebuild-role"); err != nil {
+			t.Fatalf("删除角色失败: %v", err)
+		}
+
+		// 模拟极端场景:直接向 casbin_rule 注入残留策略(等价于 DeleteRole 清理失败)
+		if _, err := enforcer.AddPolicy("rebuild-role", "dashboard", "view"); err != nil {
+			t.Fatalf("注入残留策略失败: %v", err)
+		}
+		if err := enforcer.LoadPolicy(); err != nil {
+			t.Fatalf("LoadPolicy 失败: %v", err)
+		}
+		// 此时同名角色不存在但残留策略命中 → 模拟越权条件
+		if ok, _ := HasPermission("rebuild-role", "dashboard", "view"); !ok {
+			t.Fatal("前置条件:残留策略应命中(模拟 DeleteRole 清理失败的越权隐患)")
+		}
+
+		// 重建同名角色(CreateRole 兜底清理残留策略)
+		if err := CreateRole(model.Role{Name: "rebuild-role", Label: "重建角色2"}); err != nil {
+			t.Fatalf("重建角色失败: %v", err)
+		}
+
+		// 验证:新角色无任何旧权限(越权被阻断)
+		if ok, _ := HasPermission("rebuild-role", "dashboard", "view"); ok {
+			t.Error("重建后不应继承残留的 dashboard:view(越权)")
+		}
+		if ok, _ := HasPermission("rebuild-role", "server", "read"); ok {
+			t.Error("重建后不应继承残留的 server:read(越权)")
+		}
+	})
 }
