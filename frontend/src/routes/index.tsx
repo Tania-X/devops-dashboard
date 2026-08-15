@@ -10,6 +10,7 @@ import MonitorPage from '../features/monitor/MonitorPage';
 import AgentPage from '../features/agent/AgentPage';
 import UserPage from '../features/user/UserPage';
 import SettingsPage from '../features/settings/SettingsPage';
+import AlertHistoryPage from '../features/alerts/AlertHistoryPage';
 
 export default function AppRoutes() {
   return (
@@ -22,6 +23,7 @@ export default function AppRoutes() {
           <Route path="logs" element={<LogQueryPage />} />
           <Route path="deployments" element={<DeploymentPage />} />
           <Route path="monitor" element={<MonitorPage />} />
+          <Route path="alerts" element={<AlertHistoryPage />} />
           <Route path="agents" element={<AgentPage />} />
           <Route path="users" element={<UserPage />} />
           <Route path="settings" element={<SettingsPage />} />
