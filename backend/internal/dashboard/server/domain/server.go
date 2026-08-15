@@ -1,4 +1,4 @@
-package model
+package domain
 
 type Server struct {
 	ID                string             `gorm:"primaryKey" json:"id"`

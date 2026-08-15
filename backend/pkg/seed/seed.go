@@ -6,13 +6,14 @@ import (
 	"math/rand"
 	"time"
 
+	serverdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"gorm.io/gorm"
 )
 
 func SeedIfNeeded(db *gorm.DB) {
 	var count int64
-	db.Model(&model.Server{}).Count(&count)
+	db.Model(&serverdomain.Server{}).Count(&count)
 	if count > 0 {
 		slog.Info("数据库已有数据，跳过初始化")
 		return
@@ -31,10 +32,10 @@ func seedServers(db *gorm.DB) {
 	osList := []string{"CentOS 7.9", "Ubuntu 22.04", "Debian 12", "Rocky Linux 9", "AlmaLinux 8"}
 	statusList := []string{"running", "stopped", "maintenance"}
 
-	servers := make([]model.Server, 35)
+	servers := make([]serverdomain.Server, 35)
 	for i := 0; i < 35; i++ {
 		id := fmt.Sprintf("srv-%03d", i+1)
-		servers[i] = model.Server{
+		servers[i] = serverdomain.Server{
 			ID:       id,
 			Hostname: fmt.Sprintf("%s-%s-%02d", randomWord(), randomWord(), i+1),
 			IP:       fmt.Sprintf("192.168.1.%d", 10+i),
@@ -49,7 +50,7 @@ func seedServers(db *gorm.DB) {
 		for _, mount := range mounts {
 			totalGb := []int{100, 250, 500, 1000, 2000}[rand.Intn(5)]
 			usedGb := int(float64(totalGb) * (0.2 + rand.Float64()*0.75))
-			servers[i].DiskPartitions = append(servers[i].DiskPartitions, model.DiskPartition{
+			servers[i].DiskPartitions = append(servers[i].DiskPartitions, serverdomain.DiskPartition{
 				ServerID: id,
 				Mount:    mount,
 				TotalGb:  totalGb,
@@ -63,7 +64,7 @@ func seedServers(db *gorm.DB) {
 			if name != "lo" {
 				ip = fmt.Sprintf("192.168.%d.%d", rand.Intn(256), rand.Intn(256))
 			}
-			servers[i].NetworkInterfaces = append(servers[i].NetworkInterfaces, model.NetworkInterface{
+			servers[i].NetworkInterfaces = append(servers[i].NetworkInterfaces, serverdomain.NetworkInterface{
 				ServerID: id,
 				Name:     name,
 				IP:       ip,

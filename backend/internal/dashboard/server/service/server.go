@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	serverdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/domain"
 	"gorm.io/gorm"
 )
 
@@ -13,9 +13,9 @@ func NewServerService(db *gorm.DB) *ServerService {
 	return &ServerService{db: db}
 }
 
-func (s *ServerService) List(page, pageSize int, status string) ([]model.Server, int64, error) {
+func (s *ServerService) List(page, pageSize int, status string) ([]serverdomain.Server, int64, error) {
 
-	var servers []model.Server
+	var servers []serverdomain.Server
 	var total int64
 
 	query := s.db.Model(&servers)
@@ -33,8 +33,8 @@ func (s *ServerService) List(page, pageSize int, status string) ([]model.Server,
 	return servers, total, nil
 }
 
-func (s *ServerService) GetByID(id string) (model.Server, error) {
-	var server model.Server
+func (s *ServerService) GetByID(id string) (serverdomain.Server, error) {
+	var server serverdomain.Server
 	if result := s.db.Preload("DiskPartitions").Preload("NetworkInterfaces").
 		First(&server, "id = ?", id); result.Error != nil {
 		return server, result.Error

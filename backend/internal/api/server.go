@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	serverdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,7 +15,7 @@ import (
 // @Param       page     query int    false "页码"  default(1)
 // @Param       pageSize query int    false "每页条数" default(10)
 // @Param       status   query string false "状态筛选" Enums(running, stopped, maintenance)
-// @Success     200 {object} model.PagedResultServerItem
+// @Success     200 {object} serverdomain.PagedResultServerItem
 // @Router      /servers [get]
 func (h *Handler) GetServerList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -35,7 +35,7 @@ func (h *Handler) GetServerList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, model.PagedResultServerItem{
+	c.JSON(http.StatusOK, serverdomain.PagedResultServerItem{
 		List:     servers,
 		Total:    total,
 		Page:     page,
@@ -48,7 +48,7 @@ func (h *Handler) GetServerList(c *gin.Context) {
 // @Description 按 ID 获取单台服务器详情（含磁盘分区和网络接口）
 // @Tags        Server
 // @Param       id path string true "服务器 ID"
-// @Success     200 {object} model.Server
+// @Success     200 {object} serverdomain.Server
 // @Failure     404 {object} map[string]string
 // @Router      /servers/{id} [get]
 func (h *Handler) GetServerDetail(c *gin.Context) {
