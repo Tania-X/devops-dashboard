@@ -21,8 +21,9 @@ type Services struct {
 	AgentService      *AgentService
 	AuthService       *AuthService
 	UserService       *usersvc.UserService
-	WebhookManager    *WebhookManager
-	AuditService      *AuditService
+	WebhookManager        *WebhookManager
+	AlertThresholdManager *AlertThresholdManager
+	AuditService          *AuditService
 }
 
 // HealthCheck 检查数据库连通性
@@ -49,7 +50,8 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 		AgentService:      NewAgentService(db, agentSecretKey, agentBinPath),
 		AuthService:       NewAuthService(db, jwtSecret),
 		UserService:       usersvc.NewUserService(db),
-		WebhookManager:    NewWebhookManager(db, bus),
-		AuditService:      NewAuditService(db),
+		WebhookManager:        NewWebhookManager(db, bus),
+		AlertThresholdManager: NewAlertThresholdManager(db, alerter),
+		AuditService:          NewAuditService(db),
 	}
 }

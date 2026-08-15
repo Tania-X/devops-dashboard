@@ -87,6 +87,10 @@ func (h *Handler) SetupRouter() *gin.Engine {
 			auth.PUT("/settings/webhook", RequirePermission(authz.PermWebhookUpdate), h.UpdateWebhookConfig)
 			auth.POST("/settings/webhook/test", RequirePermission(authz.PermWebhookUpdate), h.TestWebhookConfig)
 
+			// 告警阈值配置（设置管理权限,热生效）
+			auth.GET("/settings/alert-thresholds", RequirePermission(authz.PermSettingsManage), h.GetAlertThresholds)
+			auth.PUT("/settings/alert-thresholds", RequirePermission(authz.PermSettingsManage), h.UpdateAlertThreshold)
+
 			// 角色权限配置（仅 admin，RBAC 二期）
 			auth.GET("/settings/roles", RequirePermission(authz.PermSettingsManage), h.ListRoles)
 			auth.GET("/settings/permissions", RequirePermission(authz.PermSettingsManage), h.ListPermissionGroups)

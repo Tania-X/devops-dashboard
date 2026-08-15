@@ -5,6 +5,7 @@ import { getDevOpsDashboardAPI } from '../../api/client';
 import type { WebhookConfigUpdate } from '../../api/model';
 import RolePermissions from './RolePermissions';
 import AuditLogs from './AuditLogs';
+import AlertThresholdsTab from './AlertThresholdsTab';
 import { usePermission } from '../../hooks/usePermission';
 
 const { Text } = Typography;
@@ -25,6 +26,7 @@ export default function SettingsPage() {
           { key: 'webhook', label: '告警通知', children: <WebhookSettingsTab /> },
           ...(canManagePermissions
             ? [
+                { key: 'thresholds', label: '告警阈值', children: <AlertThresholdsTab /> },
                 { key: 'permissions', label: '角色权限', children: <RolePermissions /> },
                 { key: 'audit', label: '审计日志', children: <AuditLogs /> },
               ]

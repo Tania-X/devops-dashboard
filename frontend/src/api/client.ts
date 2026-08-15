@@ -23,6 +23,7 @@ import type {
   ListAuditLogsParams,
   LoginRequest,
   UpdateAgentRequest,
+  UpdateAlertThresholdRequest,
   UpdateRolePermissionsRequest,
   UpdateRoleRequest,
   UpdateUserRequest,
@@ -49,6 +50,7 @@ import type {
   AgentStatus,
   AgentTarget,
   AlertItem,
+  AlertThreshold,
   CreateRole201,
   DashboardMetrics,
   DashboardTrend,
@@ -291,6 +293,31 @@ const testWebhookConfig = <TData = AxiosResponse<TestWebhookConfig200>>(
   }
 
 /**
+ * 返回各指标（CPU/内存/磁盘）当前生效的告警阈值（DB 有配置则返回配置值，否则默认值）
+ * @summary 获取告警阈值配置
+ */
+const getAlertThresholds = <TData = AxiosResponse<AlertThreshold[]>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/settings/alert-thresholds`,options
+    );
+  }
+
+/**
+ * 更新指定指标的 warning/critical 阈值，校验 warn < crit。保存后热生效（下次采集即用新阈值）
+ * @summary 更新告警阈值
+ */
+const updateAlertThreshold = <TData = AxiosResponse<AlertThreshold[]>>(
+    updateAlertThresholdRequest: UpdateAlertThresholdRequest, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.put(
+      `/api/settings/alert-thresholds`,
+      updateAlertThresholdRequest,options
+    );
+  }
+
+/**
  * 创建空权限的自定义角色（默认无任何权限，需后续配置）
  * @summary 创建自定义角色
  */
@@ -514,7 +541,7 @@ const deleteUser = <TData = AxiosResponse<void>>(
     );
   }
 
-return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,createRole,listRoles,listPermissionGroups,updateRolePermissions,deleteRole,updateRoleMeta,listAuditLogs,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
+return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,getAlertThresholds,updateAlertThreshold,createRole,listRoles,listPermissionGroups,updateRolePermissions,deleteRole,updateRoleMeta,listAuditLogs,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
 export type LoginResult = AxiosResponse<LoginResponse>
 export type GetMeResult = AxiosResponse<MeResponse>
 export type LogoutResult = AxiosResponse<void>
@@ -532,6 +559,8 @@ export type GetHostInfoResult = AxiosResponse<HostInfo>
 export type GetWebhookConfigResult = AxiosResponse<WebhookConfig>
 export type UpdateWebhookConfigResult = AxiosResponse<WebhookConfig>
 export type TestWebhookConfigResult = AxiosResponse<TestWebhookConfig200>
+export type GetAlertThresholdsResult = AxiosResponse<AlertThreshold[]>
+export type UpdateAlertThresholdResult = AxiosResponse<AlertThreshold[]>
 export type CreateRoleResult = AxiosResponse<CreateRole201>
 export type ListRolesResult = AxiosResponse<ListRoles200>
 export type ListPermissionGroupsResult = AxiosResponse<ListPermissionGroups200>
@@ -583,6 +612,10 @@ export const getGetWebhookConfigResponseMock = (overrideResponse: Partial< Webho
 export const getUpdateWebhookConfigResponseMock = (overrideResponse: Partial< WebhookConfig > = {}): WebhookConfig => ({id: faker.number.int({min: undefined, max: undefined}), enabled: faker.datatype.boolean(), kind: faker.helpers.arrayElement(['dingtalk','wecom'] as const), url: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined]), ...overrideResponse})
 
 export const getTestWebhookConfigResponseMock = (overrideResponse: Partial< TestWebhookConfig200 > = {}): TestWebhookConfig200 => ({success: faker.datatype.boolean(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getGetAlertThresholdsResponseMock = (): AlertThreshold[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({metric: faker.helpers.arrayElement(['cpu','memory','disk'] as const), warnThreshold: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), critThreshold: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])})))
+
+export const getUpdateAlertThresholdResponseMock = (): AlertThreshold[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({metric: faker.helpers.arrayElement(['cpu','memory','disk'] as const), warnThreshold: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), critThreshold: faker.number.float({min: undefined, max: undefined, fractionDigits: 2}), updatedAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])})))
 
 export const getCreateRoleResponseMock = (overrideResponse: Partial< CreateRole201 > = {}): CreateRole201 => ({role: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), label: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
@@ -817,6 +850,30 @@ export const getTestWebhookConfigMockHandler = (overrideResponse?: TestWebhookCo
   }, options)
 }
 
+export const getGetAlertThresholdsMockHandler = (overrideResponse?: AlertThreshold[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AlertThreshold[]> | AlertThreshold[]), options?: RequestHandlerOptions) => {
+  return http.get('*/api/settings/alert-thresholds', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAlertThresholdsResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getUpdateAlertThresholdMockHandler = (overrideResponse?: AlertThreshold[] | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<AlertThreshold[]> | AlertThreshold[]), options?: RequestHandlerOptions) => {
+  return http.put('*/api/settings/alert-thresholds', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getUpdateAlertThresholdResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
 export const getCreateRoleMockHandler = (overrideResponse?: CreateRole201 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<CreateRole201> | CreateRole201), options?: RequestHandlerOptions) => {
   return http.post('*/api/settings/roles', async (info) => {await delay(1000);
   
@@ -1042,6 +1099,8 @@ export const getDevOpsDashboardAPIMock = () => [
   getGetWebhookConfigMockHandler(),
   getUpdateWebhookConfigMockHandler(),
   getTestWebhookConfigMockHandler(),
+  getGetAlertThresholdsMockHandler(),
+  getUpdateAlertThresholdMockHandler(),
   getCreateRoleMockHandler(),
   getListRolesMockHandler(),
   getListPermissionGroupsMockHandler(),
