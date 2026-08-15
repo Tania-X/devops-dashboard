@@ -57,6 +57,12 @@
 - E2E: 浏览器通道由 `playwright.config` 自动探测,**spec 禁止硬编码 channel**;权限功能必须做**组合矩阵测试**(全量组合,暴露死配置);登录后禁止 `waitForLoadState('networkidle')`(dashboard 有轮询 API),改等菜单/表单渲染
 - 环境隔离: 测试用独立端口(后端 8081 / 前端 5174)+ 独立测试库,不动用户的 dev server
 
+## Git 工作流
+
+- 已合并的本地/远端分支**保留不删**(2026-08-16 用户约定),禁止主动 `git branch -d/-D` 清理;
+  分支历史是资产,避免误删找回成本
+- 其他 git 提交策略/事故教训见 `docs/` 文档
+
 ## 文档
 
 - 环境/工具问题 → `docs/env-setup-macos.md`;开发经验与前端模式 → `docs/development-guide.md`
