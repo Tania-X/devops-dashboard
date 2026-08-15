@@ -205,3 +205,31 @@ func TestAlerter_Concurrent(t *testing.T) {
 	wg.Wait()
 	// 不 panic / 不 race 即通过
 }
+
+func TestAlerter_SetThreshold(t *testing.T) {
+	t.Run("SetThreshold 热更新后按新阈值判断", func(t *testing.T) {
+		a := NewAlerter()
+		// 默认 cpu warn=60 crit=80:70 → warning
+		a.Evaluate(&MetricSnapshot{CPUPercent: 70, MemoryPercent: 40, DiskPercent: 50})
+		// 热更新为 warn=50 crit=65:70 → critical
+		a.SetThreshold("cpu", 50, 65)
+		a.Evaluate(&MetricSnapshot{CPUPercent: 70, MemoryPercent: 40, DiskPercent: 50})
+		alerts := a.GetAlerts(10)
+		// 状态 warning→critical 各生成一条;最新(倒序第一)应为 critical
+		if len(alerts) != 2 || alerts[0].Level != "critical" {
+			t.Fatalf("更新阈值后 70%% 最新告警应为 critical, got %+v", alerts)
+		}
+	})
+
+	t.Run("GetThresholds 返回生效阈值", func(t *testing.T) {
+		a := NewAlerter()
+		got := a.GetThresholds()
+		if got["cpu"].Warn != 60 || got["cpu"].Crit != 80 {
+			t.Errorf("默认 cpu 阈值应为 60/80, got %+v", got["cpu"])
+		}
+		a.SetThreshold("memory", 10, 20)
+		if got := a.GetThresholds(); got["memory"].Warn != 10 || got["memory"].Crit != 20 {
+			t.Errorf("更新后 memory 阈值应为 10/20, got %+v", got["memory"])
+		}
+	})
+}

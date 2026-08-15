@@ -426,6 +426,54 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/settings/alert-thresholds:
+    get:
+      operationId: getAlertThresholds
+      summary: 获取告警阈值配置
+      description: 返回各指标（CPU/内存/磁盘）当前生效的告警阈值（DB 有配置则返回配置值，否则默认值）
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功返回阈值列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertThreshold'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      operationId: updateAlertThreshold
+      summary: 更新告警阈值
+      description: 更新指定指标的 warning/critical 阈值，校验 warn < crit。保存后热生效（下次采集即用新阈值）
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAlertThresholdRequest'
+      responses:
+        '200':
+          description: 更新成功，返回最新阈值列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertThreshold'
+        '400':
+          description: 参数校验失败（指标不支持 / warn >= crit）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/settings/roles:
     post:
       operationId: createRole
@@ -1304,6 +1352,41 @@ components:
           example: 4.0
 
     # ---------- Settings / Webhook ----------
+    AlertThreshold:
+      type: object
+      required: [metric, warnThreshold, critThreshold]
+      properties:
+        metric:
+          type: string
+          enum: [cpu, memory, disk]
+          example: cpu
+        warnThreshold:
+          type: number
+          description: warning 阈值（超过触发 warning 告警）
+          example: 60
+        critThreshold:
+          type: number
+          description: critical 阈值（超过触发 critical 告警）
+          example: 80
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateAlertThresholdRequest:
+      type: object
+      required: [metric, warnThreshold, critThreshold]
+      properties:
+        metric:
+          type: string
+          enum: [cpu, memory, disk]
+          example: cpu
+        warnThreshold:
+          type: number
+          example: 60
+        critThreshold:
+          type: number
+          example: 80
+
     WebhookConfig:
       type: object
       required: [id, enabled, kind, url]

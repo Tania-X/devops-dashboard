@@ -51,3 +51,22 @@ func (h *Handler) TestWebhookConfig(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "detail": detail})
 }
+
+// GetAlertThresholds 获取告警阈值配置(DB 有则返回,无则默认值)
+func (h *Handler) GetAlertThresholds(c *gin.Context) {
+	c.JSON(http.StatusOK, h.services.AlertThresholdManager.List())
+}
+
+// UpdateAlertThreshold 更新告警阈值(校验 + 热生效,下次采集即用新阈值)
+func (h *Handler) UpdateAlertThreshold(c *gin.Context) {
+	var req model.UpdateAlertThresholdRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
+		return
+	}
+	if err := h.services.AlertThresholdManager.Update(req.Metric, req.WarnThreshold, req.CritThreshold); err != nil {
+		ErrorJSON(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, h.services.AlertThresholdManager.List())
+}
