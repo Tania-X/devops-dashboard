@@ -7,7 +7,6 @@ import (
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +24,8 @@ func (s *AuthService) Login(username, password string) (*model.LoginResponse, er
 	if err := s.db.Where("username = ?", username).First(&user).Error; err != nil {
 		return nil, errors.New("用户名或密码错误")
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+	// 密码校验收敛到实体方法(bcrypt 比对)
+	if !user.VerifyPassword(password) {
 		return nil, errors.New("用户名或密码错误")
 	}
 	token, err := s.generateToken(user)

@@ -6,8 +6,6 @@ import (
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -27,53 +25,55 @@ func (s *UserService) List() ([]model.User, error) {
 	return users, nil
 }
 
-func (s *UserService) Create(user model.User) (*model.User, error) {
-	// 校验角色存在（防止创建绑定不存在角色的用户）
-	if err := s.validateRole(user.Role); err != nil {
+// Create 创建用户:校验角色存在性 → 工厂创建实体(内部完成密码哈希)→ 落库。
+// 编排者角色,业务规则(密码哈希/角色校验)收敛在实体与工厂。
+func (s *UserService) Create(req model.CreateUserRequest) (*model.User, error) {
+	// 校验角色存在(防止创建绑定不存在角色的用户)
+	if err := s.validateRole(req.Role); err != nil {
 		return nil, err
 	}
-	user.ID = uuid.New().String()
-	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	u, err := model.NewUser(req.Username, req.Password, model.UserRole(req.Role))
 	if err != nil {
 		return nil, err
 	}
-	user.Password = string(hashed)
-	user.CreatedAt = time.Now()
-	user.UpdatedAt = user.CreatedAt
-	if err := s.db.Create(&user).Error; err != nil {
+	now := time.Now()
+	u.CreatedAt = now
+	u.UpdatedAt = now
+	if err := s.db.Create(u).Error; err != nil {
 		return nil, err
 	}
-	user.Password = ""
-	return &user, nil
+	return u, nil
 }
 
-func (s *UserService) Update(id string, user model.User) (*model.User, error) {
-	// 校验角色存在（防止将用户绑定到不存在的角色）
-	if err := s.validateRole(user.Role); err != nil {
-		return nil, err
-	}
+// Update 更新用户:角色/密码留空表示不修改;变更走实体方法,业务规则内聚。
+func (s *UserService) Update(id string, req model.UpdateUserRequest) (*model.User, error) {
 	var existing model.User
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
-	// 用户名不可修改（前端编辑表单 username 为 disabled，请求 DTO 不含该字段）
-	existing.Role = user.Role
-	existing.UpdatedAt = time.Now()
-	if user.Password != "" {
-		hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-		if err != nil {
+	// 角色变更:先查证存在性(DB),再应用实体方法(格式/内置校验)
+	if req.Role != "" {
+		if err := s.validateRole(req.Role); err != nil {
 			return nil, err
 		}
-		existing.Password = string(hashed)
+		if err := existing.ChangeRole(model.UserRole(req.Role)); err != nil {
+			return nil, err
+		}
 	}
+	// 密码变更:留空表示不修改
+	if req.Password != "" {
+		if err := existing.SetPassword(req.Password); err != nil {
+			return nil, err
+		}
+	}
+	existing.UpdatedAt = time.Now()
 	if err := s.db.Save(&existing).Error; err != nil {
 		return nil, err
 	}
-	existing.Password = ""
 	return &existing, nil
 }
 
-// validateRole 校验角色是否存在于 roles 表（数据库错误时保守拒绝，避免绑定未知角色）。
+// validateRole 校验角色是否存在于 roles 表(数据库错误时保守拒绝,避免绑定未知角色)。
 func (s *UserService) validateRole(role string) error {
 	exists, err := authz.RoleExists(role)
 	if err != nil {
