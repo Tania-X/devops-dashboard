@@ -3,6 +3,7 @@ package authz
 import (
 	"testing"
 
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -16,7 +17,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("创建测试库失败: %v", err)
 	}
 	// 角色 CRUD 需要 roles 表（与生产 AutoMigrate 对齐）
-	if err := db.AutoMigrate(&model.Role{}, &model.User{}); err != nil {
+	if err := db.AutoMigrate(&model.Role{}, &userdomain.User{}); err != nil {
 		t.Fatalf("迁移测试表失败: %v", err)
 	}
 	return db
@@ -372,7 +373,7 @@ func TestRoleCRUD(t *testing.T) {
 
 	t.Run("有用户绑定的角色不可删", func(t *testing.T) {
 		// 创建用户绑定 auditor 角色
-		u := model.User{ID: "u1", Username: "tester", Password: "x", Role: "auditor"}
+		u := userdomain.User{ID: "u1", Username: "tester", Password: "x", Role: "auditor"}
 		if err := db.Create(&u).Error; err != nil {
 			t.Fatalf("创建测试用户失败: %v", err)
 		}

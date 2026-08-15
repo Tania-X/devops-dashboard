@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"gorm.io/gorm"
 )
 
@@ -17,8 +17,8 @@ func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{db: db}
 }
 
-func (s *UserService) List() ([]model.User, error) {
-	var users []model.User
+func (s *UserService) List() ([]userdomain.User, error) {
+	var users []userdomain.User
 	if err := s.db.Order("created_at DESC").Find(&users).Error; err != nil {
 		return nil, err
 	}
@@ -27,12 +27,12 @@ func (s *UserService) List() ([]model.User, error) {
 
 // Create 创建用户:校验角色存在性 → 工厂创建实体(内部完成密码哈希)→ 落库。
 // 编排者角色,业务规则(密码哈希/角色校验)收敛在实体与工厂。
-func (s *UserService) Create(req model.CreateUserRequest) (*model.User, error) {
+func (s *UserService) Create(req userdomain.CreateUserRequest) (*userdomain.User, error) {
 	// 校验角色存在(防止创建绑定不存在角色的用户)
 	if err := s.validateRole(req.Role); err != nil {
 		return nil, err
 	}
-	u, err := model.NewUser(req.Username, req.Password, model.UserRole(req.Role))
+	u, err := userdomain.NewUser(req.Username, req.Password, userdomain.UserRole(req.Role))
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +46,8 @@ func (s *UserService) Create(req model.CreateUserRequest) (*model.User, error) {
 }
 
 // Update 更新用户:角色/密码留空表示不修改;变更走实体方法,业务规则内聚。
-func (s *UserService) Update(id string, req model.UpdateUserRequest) (*model.User, error) {
-	var existing model.User
+func (s *UserService) Update(id string, req userdomain.UpdateUserRequest) (*userdomain.User, error) {
+	var existing userdomain.User
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (s *UserService) Update(id string, req model.UpdateUserRequest) (*model.Use
 		if err := s.validateRole(req.Role); err != nil {
 			return nil, err
 		}
-		if err := existing.ChangeRole(model.UserRole(req.Role)); err != nil {
+		if err := existing.ChangeRole(userdomain.UserRole(req.Role)); err != nil {
 			return nil, err
 		}
 	}
@@ -86,5 +86,5 @@ func (s *UserService) validateRole(role string) error {
 }
 
 func (s *UserService) Delete(id string) error {
-	return s.db.Delete(&model.User{}, "id = ?", id).Error
+	return s.db.Delete(&userdomain.User{}, "id = ?", id).Error
 }

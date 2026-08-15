@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -48,7 +48,7 @@ func RequirePermission(perm string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		u, ok := user.(*model.User)
+		u, ok := user.(*userdomain.User)
 		if !ok {
 			ErrorJSON(c, http.StatusForbidden, "权限不足")
 			c.Abort()
