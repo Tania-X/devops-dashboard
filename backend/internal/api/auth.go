@@ -4,12 +4,12 @@ import (
 	"net/http"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) Login(c *gin.Context) {
-	var req model.LoginRequest
+	var req userdomain.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
@@ -28,7 +28,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 		ErrorJSON(c, http.StatusUnauthorized, "未登录")
 		return
 	}
-	u, ok := user.(*model.User)
+	u, ok := user.(*userdomain.User)
 	if !ok {
 		ErrorJSON(c, http.StatusInternalServerError, "用户信息异常")
 		return
@@ -38,7 +38,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 		ErrorJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, model.MeResponse{User: *u, Permissions: permissions})
+	c.JSON(http.StatusOK, userdomain.MeResponse{User: *u, Permissions: permissions})
 }
 
 func (h *Handler) Logout(c *gin.Context) {

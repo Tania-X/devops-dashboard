@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -35,7 +36,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		&model.Deployment{},
 		&model.DeploymentHistory{},
 		&model.AgentTarget{},
-		&model.User{},
+		&userdomain.User{},
 		&model.WebhookConfig{},
 		&model.Role{},
 		&model.AuditLog{},
@@ -50,12 +51,12 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 
 func seedAdminUser(db *gorm.DB) {
 	var count int64
-	db.Model(&model.User{}).Count(&count)
+	db.Model(&userdomain.User{}).Count(&count)
 	if count > 0 {
 		return
 	}
 	// 使用工厂创建:ID 生成 + 密码哈希收敛到实体
-	admin, err := model.NewUser("admin", "admin123", model.UserRoleAdmin)
+	admin, err := userdomain.NewUser("admin", "admin123", userdomain.UserRoleAdmin)
 	if err != nil {
 		return
 	}

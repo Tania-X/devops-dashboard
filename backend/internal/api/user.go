@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +18,7 @@ func (h *Handler) GetUserList(c *gin.Context) {
 }
 
 func (h *Handler) CreateUser(c *gin.Context) {
-	var req model.CreateUserRequest
+	var req userdomain.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
@@ -34,7 +34,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 
 func (h *Handler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var req model.UpdateUserRequest
+	var req userdomain.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
@@ -51,7 +51,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 func (h *Handler) DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	// 删除前取用户名（审计用）；删除失败不影响主流程
-	var victim *model.User
+	var victim *userdomain.User
 	if users, err := h.services.UserService.List(); err == nil {
 		for i := range users {
 			if users[i].ID == id {

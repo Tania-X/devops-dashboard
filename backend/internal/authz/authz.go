@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"sort"
 
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/casbin/casbin/v2"
 	casbinmodel "github.com/casbin/casbin/v2/model"
@@ -351,7 +352,7 @@ func DeleteRole(name string) error {
 		return errors.New("内置角色不可删除")
 	}
 	var userCount int64
-	if err := db.Model(&model.User{}).Where("role = ?", name).Count(&userCount).Error; err != nil {
+	if err := db.Model(&userdomain.User{}).Where("role = ?", name).Count(&userCount).Error; err != nil {
 		return err
 	}
 	if userCount > 0 {

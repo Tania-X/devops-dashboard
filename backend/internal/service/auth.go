@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
@@ -19,8 +19,8 @@ func NewAuthService(db *gorm.DB, jwtSecret string) *AuthService {
 	return &AuthService{db: db, jwtSecret: []byte(jwtSecret)}
 }
 
-func (s *AuthService) Login(username, password string) (*model.LoginResponse, error) {
-	var user model.User
+func (s *AuthService) Login(username, password string) (*userdomain.LoginResponse, error) {
+	var user userdomain.User
 	if err := s.db.Where("username = ?", username).First(&user).Error; err != nil {
 		return nil, errors.New("用户名或密码错误")
 	}
@@ -39,10 +39,10 @@ func (s *AuthService) Login(username, password string) (*model.LoginResponse, er
 	if err != nil {
 		return nil, err
 	}
-	return &model.LoginResponse{Token: token, User: user, Permissions: permissions}, nil
+	return &userdomain.LoginResponse{Token: token, User: user, Permissions: permissions}, nil
 }
 
-func (s *AuthService) ValidateToken(tokenString string) (*model.User, error) {
+func (s *AuthService) ValidateToken(tokenString string) (*userdomain.User, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
@@ -60,14 +60,14 @@ func (s *AuthService) ValidateToken(tokenString string) (*model.User, error) {
 	if !ok {
 		return nil, errors.New("无效的令牌声明")
 	}
-	var user model.User
+	var user userdomain.User
 	if err := s.db.First(&user, "id = ?", userID).Error; err != nil {
 		return nil, errors.New("用户不存在")
 	}
 	return &user, nil
 }
 
-func (s *AuthService) generateToken(user model.User) (string, error) {
+func (s *AuthService) generateToken(user userdomain.User) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":      user.ID,
 		"username": user.Username,

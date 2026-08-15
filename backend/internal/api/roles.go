@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
+	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/Tania-X/devops-dashboard/backend/internal/service"
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,7 @@ import (
 // currentUsername 从上下文中取当前操作人用户名（审计用）。
 func currentUsername(c *gin.Context) string {
 	if u, ok := c.Get("currentUser"); ok {
-		if user, ok := u.(*model.User); ok {
+		if user, ok := u.(*userdomain.User); ok {
 			return user.Username
 		}
 	}
