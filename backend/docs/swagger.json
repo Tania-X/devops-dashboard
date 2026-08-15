@@ -372,7 +372,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.PagedResultServerItem"
+                            "$ref": "#/definitions/serverdomain.PagedResultServerItem"
                         }
                     }
                 }
@@ -398,7 +398,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Server"
+                            "$ref": "#/definitions/serverdomain.Server"
                         }
                     },
                     "404": {
@@ -518,7 +518,7 @@
                 }
             }
         },
-        "model.DiskPartition": {
+        "serverdomain.DiskPartition": {
             "type": "object",
             "properties": {
                 "mount": {
@@ -616,7 +616,7 @@
                 }
             }
         },
-        "model.NetworkInterface": {
+        "serverdomain.NetworkInterface": {
             "type": "object",
             "properties": {
                 "ip": {
@@ -650,13 +650,13 @@
                 }
             }
         },
-        "model.PagedResultServerItem": {
+        "serverdomain.PagedResultServerItem": {
             "type": "object",
             "properties": {
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Server"
+                        "$ref": "#/definitions/serverdomain.Server"
                     }
                 },
                 "page": {
@@ -749,7 +749,7 @@
                 }
             }
         },
-        "model.Server": {
+        "serverdomain.Server": {
             "type": "object",
             "properties": {
                 "cpuCores": {
@@ -758,7 +758,7 @@
                 "diskPartitions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.DiskPartition"
+                        "$ref": "#/definitions/serverdomain.DiskPartition"
                     }
                 },
                 "hostname": {
@@ -776,7 +776,7 @@
                 "networkInterfaces": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.NetworkInterface"
+                        "$ref": "#/definitions/serverdomain.NetworkInterface"
                     }
                 },
                 "os": {

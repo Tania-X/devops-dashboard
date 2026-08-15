@@ -379,7 +379,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.PagedResultServerItem"
+                            "$ref": "#/definitions/serverdomain.PagedResultServerItem"
                         }
                     }
                 }
@@ -405,7 +405,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Server"
+                            "$ref": "#/definitions/serverdomain.Server"
                         }
                     },
                     "404": {
@@ -525,7 +525,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.DiskPartition": {
+        "serverdomain.DiskPartition": {
             "type": "object",
             "properties": {
                 "mount": {
@@ -623,7 +623,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.NetworkInterface": {
+        "serverdomain.NetworkInterface": {
             "type": "object",
             "properties": {
                 "ip": {
@@ -657,13 +657,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.PagedResultServerItem": {
+        "serverdomain.PagedResultServerItem": {
             "type": "object",
             "properties": {
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Server"
+                        "$ref": "#/definitions/serverdomain.Server"
                     }
                 },
                 "page": {
@@ -756,7 +756,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Server": {
+        "serverdomain.Server": {
             "type": "object",
             "properties": {
                 "cpuCores": {
@@ -765,7 +765,7 @@ const docTemplate = `{
                 "diskPartitions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.DiskPartition"
+                        "$ref": "#/definitions/serverdomain.DiskPartition"
                     }
                 },
                 "hostname": {
@@ -783,7 +783,7 @@ const docTemplate = `{
                 "networkInterfaces": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.NetworkInterface"
+                        "$ref": "#/definitions/serverdomain.NetworkInterface"
                     }
                 },
                 "os": {
