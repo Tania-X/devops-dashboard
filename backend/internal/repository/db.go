@@ -7,8 +7,6 @@ import (
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/glebarez/sqlite"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -56,15 +54,10 @@ func seedAdminUser(db *gorm.DB) {
 	if count > 0 {
 		return
 	}
-	hashed, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	// 使用工厂创建:ID 生成 + 密码哈希收敛到实体
+	admin, err := model.NewUser("admin", "admin123", model.UserRoleAdmin)
 	if err != nil {
 		return
 	}
-	admin := model.User{
-		ID:        uuid.New().String(),
-		Username:  "admin",
-		Password:  string(hashed),
-		Role:      "admin",
-	}
-	db.Create(&admin)
+	db.Create(admin)
 }

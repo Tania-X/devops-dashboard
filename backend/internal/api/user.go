@@ -23,11 +23,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
 	}
-	result, err := h.services.UserService.Create(model.User{
-		Username: req.Username,
-		Password: req.Password,
-		Role:     req.Role,
-	})
+	result, err := h.services.UserService.Create(req)
 	if err != nil {
 		ErrorJSON(c, http.StatusInternalServerError, err.Error())
 		return
@@ -43,7 +39,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
 	}
-	result, err := h.services.UserService.Update(id, model.User{Role: req.Role, Password: req.Password})
+	result, err := h.services.UserService.Update(id, req)
 	if err != nil {
 		ErrorJSON(c, http.StatusInternalServerError, err.Error())
 		return
