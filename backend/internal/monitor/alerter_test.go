@@ -42,7 +42,7 @@ func TestAlerter_SingleMetric(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			a := NewAlerter()
+			a := newImmediateAlerter()
 			a.Evaluate(&tc.snapshot)
 			alerts := a.GetAlerts(10)
 
@@ -73,7 +73,7 @@ func TestAlerter_SingleMetric(t *testing.T) {
 // ── 有状态场景（独立测试）─────────────────────
 
 func TestAlerter_Deduplication(t *testing.T) {
-	a := NewAlerter()
+	a := newImmediateAlerter()
 
 	// 第一次：CPU 85 → 触发 critical
 	a.Evaluate(&MetricSnapshot{CPUPercent: 85, MemoryPercent: 40, DiskPercent: 50})
@@ -89,7 +89,7 @@ func TestAlerter_Deduplication(t *testing.T) {
 }
 
 func TestAlerter_Escalate(t *testing.T) {
-	a := NewAlerter()
+	a := newImmediateAlerter()
 
 	// CPU 70 → warning
 	a.Evaluate(&MetricSnapshot{CPUPercent: 70, MemoryPercent: 40, DiskPercent: 50})
@@ -106,7 +106,7 @@ func TestAlerter_Escalate(t *testing.T) {
 }
 
 func TestAlerter_Recovery(t *testing.T) {
-	a := NewAlerter()
+	a := newImmediateAlerter()
 
 	// CPU 85 → critical
 	a.Evaluate(&MetricSnapshot{CPUPercent: 85, MemoryPercent: 40, DiskPercent: 50})
@@ -123,7 +123,7 @@ func TestAlerter_Recovery(t *testing.T) {
 }
 
 func TestAlerter_RecoveryThenRetrigger(t *testing.T) {
-	a := NewAlerter()
+	a := newImmediateAlerter()
 
 	// CPU 85 → critical
 	a.Evaluate(&MetricSnapshot{CPUPercent: 85, MemoryPercent: 40, DiskPercent: 50})
@@ -142,7 +142,7 @@ func TestAlerter_RecoveryThenRetrigger(t *testing.T) {
 }
 
 func TestAlerter_MultipleMetrics(t *testing.T) {
-	a := NewAlerter()
+	a := newImmediateAlerter()
 
 	// CPU 85 + Disk 80 → 2 条告警
 	a.Evaluate(&MetricSnapshot{CPUPercent: 85, MemoryPercent: 40, DiskPercent: 80})
@@ -154,7 +154,7 @@ func TestAlerter_MultipleMetrics(t *testing.T) {
 }
 
 func TestAlerter_GetAlertsLimit(t *testing.T) {
-	a := NewAlerter()
+	a := newImmediateAlerter()
 
 	// 制造 5 条告警：CPU critical → CPU recovery → Disk critical → Disk recovery → CPU warning
 	a.Evaluate(&MetricSnapshot{CPUPercent: 85, MemoryPercent: 40, DiskPercent: 50})
@@ -177,7 +177,7 @@ func TestAlerter_GetAlertsLimit(t *testing.T) {
 // ── 并发安全 ──
 
 func TestAlerter_Concurrent(t *testing.T) {
-	a := NewAlerter()
+	a := newImmediateAlerter()
 	var wg sync.WaitGroup
 
 	// 并发写入 Evaluate
@@ -208,7 +208,7 @@ func TestAlerter_Concurrent(t *testing.T) {
 
 func TestAlerter_SetThreshold(t *testing.T) {
 	t.Run("SetThreshold 热更新后按新阈值判断", func(t *testing.T) {
-		a := NewAlerter()
+		a := newImmediateAlerter()
 		// 默认 cpu warn=60 crit=80:70 → warning
 		a.Evaluate(&MetricSnapshot{CPUPercent: 70, MemoryPercent: 40, DiskPercent: 50})
 		// 热更新为 warn=50 crit=65:70 → critical
@@ -222,7 +222,7 @@ func TestAlerter_SetThreshold(t *testing.T) {
 	})
 
 	t.Run("GetThresholds 返回生效阈值", func(t *testing.T) {
-		a := NewAlerter()
+		a := newImmediateAlerter()
 		got := a.GetThresholds()
 		if got["cpu"].Warn != 60 || got["cpu"].Crit != 80 {
 			t.Errorf("默认 cpu 阈值应为 60/80, got %+v", got["cpu"])
@@ -230,6 +230,78 @@ func TestAlerter_SetThreshold(t *testing.T) {
 		a.SetThreshold("memory", 10, 20)
 		if got := a.GetThresholds(); got["memory"].Warn != 10 || got["memory"].Crit != 20 {
 			t.Errorf("更新后 memory 阈值应为 10/20, got %+v", got["memory"])
+		}
+	})
+}
+
+// newImmediateAlerter 确认周期=1:一次超阈值即告警(既有用例语义不变)
+func newImmediateAlerter() *Alerter {
+	return NewAlerterWithConfirm(1)
+}
+
+func TestAlerter_ConfirmWindow(t *testing.T) {
+	snap := func(cpu float64) *MetricSnapshot {
+		return &MetricSnapshot{CPUPercent: cpu, MemoryPercent: 30, DiskPercent: 30}
+	}
+
+	t.Run("连续未达确认周期不告警", func(t *testing.T) {
+		a := NewAlerter() // 默认 confirm=3
+		a.Evaluate(snap(70)) // streak=1
+		a.Evaluate(snap(70)) // streak=2
+		if n := len(a.GetAlerts(10)); n != 0 {
+			t.Fatalf("连续 2 次未达确认周期不应告警, got %d 条", n)
+		}
+	})
+
+	t.Run("达到确认周期触发告警", func(t *testing.T) {
+		a := NewAlerter()
+		a.Evaluate(snap(70))
+		a.Evaluate(snap(70))
+		a.Evaluate(snap(70)) // streak=3 → warning
+		alerts := a.GetAlerts(10)
+		if len(alerts) != 1 || alerts[0].Level != "warning" {
+			t.Fatalf("第 3 次应触发 warning, got %+v", alerts)
+		}
+		// 持续异常不重复
+		a.Evaluate(snap(70))
+		if n := len(a.GetAlerts(10)); n != 1 {
+			t.Fatalf("持续异常不应重复告警, got %d 条", n)
+		}
+	})
+
+	t.Run("瞬时抖动后重置计数", func(t *testing.T) {
+		a := NewAlerter()
+		a.Evaluate(snap(70)) // streak=1
+		a.Evaluate(snap(30)) // 恢复正常 → streak=0
+		a.Evaluate(snap(70)) // streak=1(重新确认)
+		if n := len(a.GetAlerts(10)); n != 0 {
+			t.Fatalf("抖动后未达确认周期不应告警, got %d 条", n)
+		}
+	})
+
+	t.Run("确认后恢复正常发恢复通知", func(t *testing.T) {
+		a := NewAlerter()
+		a.Evaluate(snap(70))
+		a.Evaluate(snap(70))
+		a.Evaluate(snap(70)) // warning 确认
+		a.Evaluate(snap(30)) // 恢复 → info
+		alerts := a.GetAlerts(10) // 倒序:最新在前
+		if len(alerts) != 2 || alerts[0].Level != "info" {
+			t.Fatalf("恢复应发 info 通知(最新一条), got %+v", alerts)
+		}
+	})
+
+	t.Run("warning 确认后升级 critical 立即触发", func(t *testing.T) {
+		a := NewAlerter()
+		// 3 次 warning(70) → warning 确认
+		a.Evaluate(snap(70))
+		a.Evaluate(snap(70))
+		a.Evaluate(snap(70))
+		// 确认过异常后,等级变化(critical)立即触发升级(异常已确认真实)
+		a.Evaluate(snap(90))
+		alerts := a.GetAlerts(10)
+		if len(alerts) != 2 || alerts[0].Level != "critical" {
+			t.Fatalf("确认后升级应立即发 critical, got %+v", alerts)
 		}
 	})
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/gin-gonic/gin"
@@ -69,4 +70,18 @@ func (h *Handler) UpdateAlertThreshold(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, h.services.AlertThresholdManager.List())
+}
+
+// GetAlertHistory 告警历史分页查询(落库记录,支持级别筛选)
+func (h *Handler) GetAlertHistory(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
+	level := c.Query("level")
+
+	list, total, err := h.services.AlertRecorder.List(page, pageSize, level)
+	if err != nil {
+		ErrorJSON(c, http.StatusInternalServerError, "查询告警历史失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"list": list, "total": total, "page": page, "pageSize": pageSize})
 }

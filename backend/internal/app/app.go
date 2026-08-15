@@ -16,6 +16,7 @@ import (
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/config"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
+	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/Tania-X/devops-dashboard/backend/internal/notify"
 	"github.com/Tania-X/devops-dashboard/backend/internal/repository"
 	"github.com/Tania-X/devops-dashboard/backend/internal/service"
@@ -76,7 +77,13 @@ func (a *App) Init() error {
 	// 告警总线：Alerter 产生告警 → channel → Webhook 通知器（异步，不阻塞采集）
 	bus := notify.NewAlertBus()
 	bus.Run()
-	alerter.OnAlert = bus.Publish
+
+	// 告警历史落库器（异步）:告警同时进总线(推送)与落库(历史查询)
+	recorder := service.NewAlertRecorder(a.db)
+	alerter.OnAlert = func(e model.AlertItem) {
+		bus.Publish(e)
+		recorder.Record(e)
+	}
 
 	a.history = monitor.NewHistory(retain, interval, alerter)
 	a.stopCh = a.history.StartCollector(interval)
@@ -90,7 +97,7 @@ func (a *App) Init() error {
 		slog.Info("使用本地采集模式（未配置 AGENT_HOSTS）")
 	}
 
-	a.services = service.NewServices(a.db, a.history, rc, alerter, bus, a.cfg.JwtSecret, a.cfg.AgentSecretKey, a.cfg.AgentBinPath)
+	a.services = service.NewServices(a.db, a.history, rc, alerter, bus, recorder, a.cfg.JwtSecret, a.cfg.AgentSecretKey, a.cfg.AgentBinPath)
 
 	handler := api.NewHandler(a.services)
 	a.server = &http.Server{

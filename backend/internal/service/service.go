@@ -23,6 +23,7 @@ type Services struct {
 	UserService       *usersvc.UserService
 	WebhookManager        *WebhookManager
 	AlertThresholdManager *AlertThresholdManager
+	AlertRecorder         *AlertRecorder
 	AuditService          *AuditService
 }
 
@@ -38,7 +39,7 @@ func (s *Services) HealthCheck() (bool, error) {
 	return true, nil
 }
 
-func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter, bus *notify.AlertBus, jwtSecret string, agentSecretKey string, agentBinPath string) *Services {
+func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollector, alerter *monitor.Alerter, bus *notify.AlertBus, recorder *AlertRecorder, jwtSecret string, agentSecretKey string, agentBinPath string) *Services {
 	logReader := logs.NewReader("storage/logs/app.log")
 	return &Services{
 		db:                db,
@@ -52,6 +53,7 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 		UserService:       usersvc.NewUserService(db),
 		WebhookManager:        NewWebhookManager(db, bus),
 		AlertThresholdManager: NewAlertThresholdManager(db, alerter),
+		AlertRecorder:         recorder,
 		AuditService:          NewAuditService(db),
 	}
 }

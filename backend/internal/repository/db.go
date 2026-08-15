@@ -40,6 +40,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		&userdomain.User{},
 		&model.WebhookConfig{},
 		&model.AlertThreshold{},
+		&model.Alert{},
 		&model.Role{},
 		&model.AuditLog{},
 	); err != nil {

@@ -91,6 +91,9 @@ func (h *Handler) SetupRouter() *gin.Engine {
 			auth.GET("/settings/alert-thresholds", RequirePermission(authz.PermSettingsManage), h.GetAlertThresholds)
 			auth.PUT("/settings/alert-thresholds", RequirePermission(authz.PermSettingsManage), h.UpdateAlertThreshold)
 
+			// 告警历史（查看类权限,分页 + 级别筛选）
+			auth.GET("/alerts", RequirePermission(authz.PermDashboardView), h.GetAlertHistory)
+
 			// 角色权限配置（仅 admin，RBAC 二期）
 			auth.GET("/settings/roles", RequirePermission(authz.PermSettingsManage), h.ListRoles)
 			auth.GET("/settings/permissions", RequirePermission(authz.PermSettingsManage), h.ListPermissionGroups)
