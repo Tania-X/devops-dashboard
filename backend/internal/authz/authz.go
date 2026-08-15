@@ -10,10 +10,13 @@ package authz
 import (
 	_ "embed"
 	"errors"
+	"fmt"
+	"log/slog"
 	"sort"
 
+	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/model"
+	casbinmodel "github.com/casbin/casbin/v2/model"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"gorm.io/gorm"
 )
@@ -140,15 +143,19 @@ var errNotInitialized = errors.New("authz: 未初始化，请先调用 Init")
 // enforcer 全局唯一授权引擎（进程内单例，Casbin 内部线程安全）。
 var enforcer *casbin.Enforcer
 
+// db 全局数据库句柄（Init 时注入），角色 CRUD 读写 roles 表用。
+var db *gorm.DB
+
 // Init 初始化授权引擎：加载 model.conf + GORM 策略适配器（自动建 casbin_rule 表），
 // 并在策略表为空时写入预置角色策略。
-func Init(db *gorm.DB) error {
-	adapter, err := gormadapter.NewAdapterByDB(db)
+func Init(d *gorm.DB) error {
+	db = d
+	adapter, err := gormadapter.NewAdapterByDB(d)
 	if err != nil {
 		return err
 	}
 	// NewModelFromString：从内嵌字符串加载模型（NewEnforcer 第一参是文件路径，不能直接传内容）
-	m, err := model.NewModelFromString(modelText)
+	m, err := casbinmodel.NewModelFromString(modelText)
 	if err != nil {
 		return err
 	}
@@ -157,7 +164,33 @@ func Init(db *gorm.DB) error {
 		return err
 	}
 	enforcer = e
-	return seedIfNeeded(db)
+	if err := seedRoles(d); err != nil {
+		return err
+	}
+	return seedIfNeeded(d)
+}
+
+// seedRoles 幂等 seed 内置角色到 roles 表（首次启动时写入；已存在则跳过）。
+// 角色元数据以代码 roleMetas 为单一事实源，数据库仅作运行时扩展（自定义角色）。
+func seedRoles(d *gorm.DB) error {
+	var count int64
+	if err := d.Table("roles").Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+	roles := make([]model.Role, 0, len(roleMetas))
+	for _, meta := range roleMetas {
+		roles = append(roles, model.Role{
+			Name:        meta.Name,
+			Label:       meta.Label,
+			Description: meta.Description,
+			Builtin:     meta.Builtin,
+			Locked:      meta.Locked,
+		})
+	}
+	return d.Create(&roles).Error
 }
 
 // HasPermission 判断角色 role 是否拥有对资源 obj 执行 act 的权限。
@@ -214,22 +247,158 @@ func Reload() error {
 }
 
 // ListRoles 返回全部角色及其当前权限点，供 /api/settings/roles 使用。
-// 角色清单来自代码元数据（roleMetas），权限点实时从策略引擎读取（admin 通配展开全量）。
+// 角色清单来自数据库 roles 表（内置角色由 seedRoles 写入），权限点实时从策略引擎读取（admin 通配展开全量）。
 func ListRoles() ([]RoleInfo, error) {
 	if enforcer == nil {
 		return nil, errNotInitialized
 	}
-	out := make([]RoleInfo, 0, len(roleMetas))
-	for _, meta := range roleMetas {
-		perms, err := PermissionsOf(meta.Name)
+	var roles []model.Role
+	if err := db.Order("builtin desc, name asc").Find(&roles).Error; err != nil {
+		return nil, err
+	}
+	out := make([]RoleInfo, 0, len(roles))
+	for _, r := range roles {
+		perms, err := PermissionsOf(r.Name)
 		if err != nil {
 			return nil, err
 		}
-		info := meta
-		info.Permissions = perms
-		out = append(out, info)
+		out = append(out, RoleInfo{
+			Name:        r.Name,
+			Label:       r.Label,
+			Description: r.Description,
+			Builtin:     r.Builtin,
+			Locked:      r.Locked,
+			Permissions: perms,
+		})
 	}
 	return out, nil
+}
+
+// CreateRole 创建自定义角色并初始化权限（默认空权限，可后续配置）。
+// 约束：name 需符合 [a-z0-9-] 且不与现有角色冲突；builtin 角色名保留不可创建。
+func CreateRole(role model.Role) error {
+	if enforcer == nil || db == nil {
+		return errNotInitialized
+	}
+	if role.Name == "" || role.Label == "" {
+		return errors.New("角色名称和显示名不能为空")
+	}
+	if !validRoleName(role.Name) {
+		return errors.New("角色名称仅允许小写字母/数字/连字符，且不以连字符开头结尾")
+	}
+	// 内置角色名保留
+	for _, meta := range roleMetas {
+		if meta.Name == role.Name {
+			return errors.New("内置角色名不可重复创建: " + role.Name)
+		}
+	}
+	var count int64
+	if err := db.Model(&model.Role{}).Where("name = ?", role.Name).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return errors.New("角色已存在: " + role.Name)
+	}
+	// 兜底：清理该角色名可能残留的孤儿 Casbin 策略（DeleteRole 清理失败时遗留）。
+	// 若不清理，同名角色重建后 Enforce 会命中残留策略 → 新角色凭空获得旧权限（越权）。
+	// 兜底清理失败视为数据库异常，拒绝创建（fail-closed），避免带病上线。
+	if _, err := enforcer.RemoveFilteredPolicy(0, role.Name); err != nil {
+		return fmt.Errorf("创建角色前清理残留策略失败: %w", err)
+	}
+	if err := db.Create(&role).Error; err != nil {
+		return err
+	}
+	return enforcer.LoadPolicy()
+}
+
+// UpdateRole 更新角色的显示名/描述（名称不可修改）。
+// 约束：内置角色（admin/operator/viewer）仅允许改描述，不允许改显示名（保持系统一致性）。
+func UpdateRole(name string, upd model.UpdateRoleRequest) error {
+	if db == nil {
+		return errNotInitialized
+	}
+	var role model.Role
+	if err := db.First(&role, "name = ?", name).Error; err != nil {
+		return errors.New("未知角色: " + name)
+	}
+	if role.Builtin && upd.Label != "" && upd.Label != role.Label {
+		return errors.New("内置角色显示名不可修改")
+	}
+	updates := map[string]interface{}{}
+	if upd.Label != "" {
+		updates["label"] = upd.Label
+	}
+	if upd.Description != "" {
+		updates["description"] = upd.Description
+	}
+	if len(updates) == 0 {
+		return errors.New("没有可更新的字段")
+	}
+	return db.Model(&role).Updates(updates).Error
+}
+
+// DeleteRole 删除自定义角色并清理其 Casbin 策略。
+// 约束：内置角色不可删；有用户绑定的角色不可删（需先转移用户）。
+func DeleteRole(name string) error {
+	if enforcer == nil || db == nil {
+		return errNotInitialized
+	}
+	var role model.Role
+	if err := db.First(&role, "name = ?", name).Error; err != nil {
+		return errors.New("未知角色: " + name)
+	}
+	if role.Builtin {
+		return errors.New("内置角色不可删除")
+	}
+	var userCount int64
+	if err := db.Model(&model.User{}).Where("role = ?", name).Count(&userCount).Error; err != nil {
+		return err
+	}
+	if userCount > 0 {
+		return errors.New("该角色下存在用户，请先转移用户再删除")
+	}
+	// 先删 DB 角色记录：失败则策略未动，DB 与策略保持一致（不会出现"角色在但权限被撤"的破坏性状态）
+	if err := db.Delete(&role).Error; err != nil {
+		return err
+	}
+	// 再清理 Casbin 策略。清理失败仅记日志不回滚：
+	//   ① DB 角色已删，返回错误会让调用方误以为"删除失败"（实际已删），状态更混乱
+	//   ② 残留孤儿策略无害：同名角色重建时 CreateRole 兜底清理，且兜底失败会拒绝创建（fail-closed）
+	if _, err := enforcer.RemoveFilteredPolicy(0, name); err != nil {
+		slog.Warn("删除角色后清理策略失败", "role", name, "err", err)
+	}
+	return enforcer.LoadPolicy()
+}
+
+// RoleExists 判断角色是否存在（用户创建/更新时校验角色合法性用）。
+// 返回 (bool, error)：数据库查询失败时返回错误，避免调用方误判角色不存在。
+func RoleExists(name string) (bool, error) {
+	if db == nil {
+		return false, errNotInitialized
+	}
+	var count int64
+	if err := db.Model(&model.Role{}).Where("name = ?", name).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// validRoleName 校验自定义角色名格式：小写字母/数字/连字符，长度 2-32。
+func validRoleName(name string) bool {
+	if len(name) < 2 || len(name) > 32 {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if c >= 'a' && c <= 'z' || c >= '0' && c <= '9' {
+			continue
+		}
+		if c == '-' && i > 0 && i < len(name)-1 {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // PermissionGroups 返回权限点分组清单（obj 分组 + 中文标签），供前端矩阵渲染。
@@ -274,19 +443,13 @@ func UpdateRolePermissions(role string, perms []string) error {
 		return errNotInitialized
 	}
 
-	// 仅允许修改已知角色
-	known := false
-	for _, meta := range roleMetas {
-		if meta.Name == role {
-			known = true
-			if meta.Locked {
-				return errors.New("admin 角色为通配策略，权限不可修改")
-			}
-			break
-		}
-	}
-	if !known {
+	// 仅允许修改已知角色（查库，兼容内置+自定义）
+	var r model.Role
+	if err := db.First(&r, "name = ?", role).Error; err != nil {
 		return errors.New("未知角色: " + role)
+	}
+	if r.Locked {
+		return errors.New("该角色为通配策略，权限不可修改")
 	}
 
 	// 校验权限点合法性（去重，保持传入顺序）

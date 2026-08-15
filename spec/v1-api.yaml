@@ -427,6 +427,38 @@ paths:
           $ref: '#/components/responses/Unauthorized'
 
   /api/settings/roles:
+    post:
+      operationId: createRole
+      summary: 创建自定义角色
+      description: 创建空权限的自定义角色（默认无任何权限，需后续配置）
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  label:
+                    type: string
+        '400':
+          description: 参数错误（重名 / 内置名保留 / 非法名称）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 无 settings:manage 权限
     get:
       operationId: listRoles
       summary: 获取角色权限配置
@@ -518,6 +550,118 @@ paths:
                       example: 'agent:deploy'
         '400':
           description: 参数错误（admin 锁定 / 未知角色 / 非法权限点）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 无 settings:manage 权限
+    delete:
+      operationId: deleteRole
+      summary: 删除自定义角色
+      description: 内置角色不可删；有用户绑定的角色不可删（需先转移用户）；删除时清理其 Casbin 策略
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 角色名
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  deleted:
+                    type: boolean
+        '400':
+          description: 参数错误（内置角色 / 有用户绑定 / 未知角色）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 无 settings:manage 权限
+
+  /api/settings/roles/{role}/meta:
+    put:
+      operationId: updateRoleMeta
+      summary: 更新角色显示名/描述
+      description: 角色名称不可修改；内置角色显示名锁定（仅改描述）
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 角色名
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    type: string
+        '400':
+          description: 参数错误（内置角色显示名不可改 / 未知角色）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 无 settings:manage 权限
+
+  /api/settings/audit-logs:
+    get:
+      operationId: listAuditLogs
+      summary: 分页查询审计日志
+      description: 返回敏感管理操作日志（角色/权限/用户增删改），按时间倒序
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功返回审计日志分页
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+                  total:
+                    type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1206,6 +1350,57 @@ components:
           description: 加签密钥（可选，钉钉安全设置用；留空表示不修改）
 
     # ---------- RBAC 角色权限配置 ----------
+    CreateRoleRequest:
+      type: object
+      required: [name, label]
+      properties:
+        name:
+          type: string
+          description: 角色标识（小写字母/数字/连字符，2-32 位）
+          example: auditor
+        label:
+          type: string
+          description: 角色中文名
+          example: 审计员
+        description:
+          type: string
+          description: 角色说明
+
+    UpdateRoleRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          description: 角色中文名（内置角色不可修改显示名）
+        description:
+          type: string
+          description: 角色说明
+
+    AuditLog:
+      type: object
+      required: [id, actor, action, target, detail, createdAt]
+      properties:
+        id:
+          type: string
+        actor:
+          type: string
+          description: 操作人用户名
+        action:
+          type: string
+          description: 动作枚举（role.create / role.update / role.delete / permission.update / user.create / user.update / user.delete）
+          example: permission.update
+        target:
+          type: string
+          description: 操作对象描述
+          example: 角色 operator
+        detail:
+          type: string
+          description: 变更详情（JSON 字符串）
+        createdAt:
+          type: string
+          format: date-time
+          description: 操作时间
+
     RoleInfo:
       type: object
       required: [name, label, description, builtin, locked, permissions]

@@ -20,6 +20,7 @@ type Services struct {
 	AuthService       *AuthService
 	UserService       *UserService
 	WebhookManager    *WebhookManager
+	AuditService      *AuditService
 }
 
 // HealthCheck 检查数据库连通性
@@ -47,5 +48,6 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 		AuthService:       NewAuthService(db, jwtSecret),
 		UserService:       NewUserService(db),
 		WebhookManager:    NewWebhookManager(db, bus),
+		AuditService:      NewAuditService(db),
 	}
 }

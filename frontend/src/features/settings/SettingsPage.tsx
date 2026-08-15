@@ -4,23 +4,30 @@ import { SendOutlined, SaveOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { WebhookConfigUpdate } from '../../api/model';
 import RolePermissions from './RolePermissions';
+import AuditLogs from './AuditLogs';
 import { usePermission } from '../../hooks/usePermission';
 
 const { Text } = Typography;
 
 const api = getDevOpsDashboardAPI(); // 模块级单例，避免每次渲染重建
 
-// SettingsPage 系统设置页 — Webhook 告警推送 + 角色权限配置（RBAC 二期）
+// SettingsPage 系统设置页 — Webhook 告警推送 + 角色权限配置 + 审计日志
+// destroyOnHidden:切走时销毁 Tab 面板,下次切回重新挂载 → 各面板数据总是最新的
+// (如新建角色后切到审计日志能立即看到记录,无需重登/手动刷新)
 export default function SettingsPage() {
   const canManagePermissions = usePermission('settings:manage');
 
   return (
     <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
       <Tabs
+        destroyOnHidden
         items={[
           { key: 'webhook', label: '告警通知', children: <WebhookSettingsTab /> },
           ...(canManagePermissions
-            ? [{ key: 'permissions', label: '角色权限', children: <RolePermissions /> }]
+            ? [
+                { key: 'permissions', label: '角色权限', children: <RolePermissions /> },
+                { key: 'audit', label: '审计日志', children: <AuditLogs /> },
+              ]
             : []),
         ]}
         style={{ color: '#fff' }}
