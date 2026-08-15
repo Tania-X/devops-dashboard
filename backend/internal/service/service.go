@@ -1,6 +1,7 @@
 package service
 
 import (
+	serversvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/service"
 	usersvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/service"
 	"github.com/Tania-X/devops-dashboard/backend/internal/logs"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
@@ -12,7 +13,7 @@ import (
 type Services struct {
 	db *gorm.DB
 
-	ServerService     *ServerService
+	ServerService     *serversvc.ServerService
 	DeploymentService *DeploymentService
 	LogService        *LogService
 	DashboardService  *DashboardService
@@ -40,7 +41,7 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 	logReader := logs.NewReader("storage/logs/app.log")
 	return &Services{
 		db:                db,
-		ServerService:     NewServerService(db),
+		ServerService:     serversvc.NewServerService(db),
 		DeploymentService: NewDeploymentService(db),
 		LogService:        NewLogService(logReader),
 		DashboardService:  NewDashboardService(db, history, rc, alerter),
