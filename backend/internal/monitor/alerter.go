@@ -24,14 +24,15 @@ var defaultThresholds = map[string]MetricThreshold{
 // Alerter 告警评估器
 // 根据采集数据判断阈值，生成告警条目并缓存在内存中
 type Alerter struct {
-	mu         sync.RWMutex
-	alerts     []model.AlertItem
-	maxAlerts  int
-	prevStatus map[string]string // key: "cpu"|"memory"|"disk", value: 已确认状态 "normal"|"warning"|"critical"
-	nextID     int
-	thresholds map[string]MetricThreshold
-	streak     map[string]int // 连续异常周期计数(达到 confirmPeriods 才确认告警,防瞬时抖动)
-	confirmPeriods int        // 连续超阈值确认周期数(>=1)
+	mu             sync.RWMutex
+	alerts         []model.AlertItem
+	maxAlerts      int
+	prevStatus     map[string]string // key: "cpu"|"memory"|"disk", value: 已确认状态 "normal"|"warning"|"critical"
+	nextID         int
+	thresholds     map[string]MetricThreshold
+	streak         map[string]int    // 连续异常周期计数(达到 confirmPeriods 才确认告警,防瞬时抖动)
+	streakStatus   map[string]string // streak 正在累加的异常等级(warning/critical);等级变化时重置
+	confirmPeriods int               // 连续超阈值确认周期数(>=1)
 
 	// OnAlert 可选回调：每条新告警产生时触发（用于 Webhook 推送等外部通知）
 	// 在 addAlert 内同步调用；回调应快速返回（如只做 channel 投递），不得阻塞
@@ -56,10 +57,11 @@ func NewAlerterWithConfirm(periods int) *Alerter {
 		periods = 1
 	}
 	return &Alerter{
-		maxAlerts:  20,
-		prevStatus: make(map[string]string),
-		thresholds: thresholds,
-		streak:     make(map[string]int),
+		maxAlerts:      20,
+		prevStatus:     make(map[string]string),
+		thresholds:     thresholds,
+		streak:         make(map[string]int),
+		streakStatus:   make(map[string]string),
 		confirmPeriods: periods,
 	}
 }
@@ -113,6 +115,12 @@ func (a *Alerter) evaluateMetric(name string, value float64, t MetricThreshold) 
 
 	// ── 异常状态:连续计数,达到确认周期才动作(防瞬时抖动) ──
 	if currentStatus != "normal" {
+		// 等级变化 → 重置计数:同一等级必须连续 confirmPeriods 次才确认
+		// (warning→critical→warning 反复横跳视为不稳定,不告警)
+		if a.streakStatus[name] != currentStatus {
+			a.streak[name] = 0
+			a.streakStatus[name] = currentStatus
+		}
 		a.streak[name]++
 		// 未达确认周期 → 不告警(仍在确认中,prevStatus 不变)
 		if a.streak[name] < a.confirmPeriods {
@@ -136,6 +144,7 @@ func (a *Alerter) evaluateMetric(name string, value float64, t MetricThreshold) 
 
 	// ── 正常状态:重置计数;之前有确认异常 → 恢复通知 ──
 	a.streak[name] = 0
+	a.streakStatus[name] = ""
 	if prevStatus != "" && prevStatus != "normal" {
 		a.prevStatus[name] = "normal"
 		a.addAlert("info", fmt.Sprintf("%s 使用率已恢复至 %.1f%%", metricLabel(name), value), name, value)

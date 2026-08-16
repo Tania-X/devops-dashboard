@@ -291,17 +291,37 @@ func TestAlerter_ConfirmWindow(t *testing.T) {
 		}
 	})
 
-	t.Run("warning 确认后升级 critical 立即触发", func(t *testing.T) {
+	t.Run("warning 确认后升级 critical 需重新确认", func(t *testing.T) {
 		a := NewAlerter()
 		// 3 次 warning(70) → warning 确认
 		a.Evaluate(snap(70))
 		a.Evaluate(snap(70))
 		a.Evaluate(snap(70))
-		// 确认过异常后,等级变化(critical)立即触发升级(异常已确认真实)
-		a.Evaluate(snap(90))
+		// 升到 critical(90):等级变化重置计数,需连续 3 次才确认升级
+		a.Evaluate(snap(90)) // critical streak=1
+		a.Evaluate(snap(90)) // critical streak=2
+		if n := len(a.GetAlerts(10)); n != 1 {
+			t.Fatalf("升级未达确认周期不应新增告警, got %d 条", n)
+		}
+		a.Evaluate(snap(90)) // critical streak=3 → 升级
 		alerts := a.GetAlerts(10)
 		if len(alerts) != 2 || alerts[0].Level != "critical" {
-			t.Fatalf("确认后升级应立即发 critical, got %+v", alerts)
+			t.Fatalf("升级确认后应发 critical, got %+v", alerts)
 		}
 	})
+}
+
+func TestAlerter_LevelFluctuation(t *testing.T) {
+	// 等级反复横跳(warning→critical→warning)视为不稳定,任一等级都不该确认告警
+	a := NewAlerter() // confirm=3
+	snapFn := func(cpu float64) *MetricSnapshot {
+		return &MetricSnapshot{CPUPercent: cpu, MemoryPercent: 30, DiskPercent: 30}
+	}
+	a.Evaluate(snapFn(70)) // warning streak=1
+	a.Evaluate(snapFn(90)) // critical 等级变化 → streak 重置=1
+	a.Evaluate(snapFn(70)) // warning 等级变化 → streak 重置=1
+	a.Evaluate(snapFn(90)) // critical 等级变化 → streak 重置=1
+	if n := len(a.GetAlerts(10)); n != 0 {
+		t.Fatalf("等级波动不应确认任何告警, got %d 条", n)
+	}
 }
