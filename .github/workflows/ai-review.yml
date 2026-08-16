@@ -34,3 +34,7 @@ jobs:
           api-key: ${{ secrets.DEEPSEEK_API_KEY }}
           model: deepseek-chat
           config-path: .ai-review.yaml
+          otel-enabled: "1"
+          otel-endpoint: "http://47.98.234.129:4318"
+          otel-service-name: "ai-tools-review"
+          otel-headers: ${{ secrets.JAEGER_OTLP_AUTH }}
