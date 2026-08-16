@@ -32,6 +32,7 @@ type App struct {
 	history  *monitor.History
 	services *service.Services
 	recorder *service.AlertRecorder
+	bus      *notify.AlertBus
 
 	server *http.Server
 	stopCh chan struct{}
@@ -77,6 +78,7 @@ func (a *App) Init() error {
 
 	// 告警总线：Alerter 产生告警 → channel → Webhook 通知器（异步，不阻塞采集）
 	bus := notify.NewAlertBus()
+	a.bus = bus
 	bus.Run()
 
 	// 告警历史落库器（异步）:告警同时进总线(推送)与落库(历史查询)
@@ -142,9 +144,12 @@ func (a *App) shutdown() error {
 
 	close(a.stopCh)
 
-	// 停止告警落库器并等待消费完成(防 goroutine 泄漏)
+	// 停止告警落库器与告警总线并等待消费完成(防 goroutine 泄漏)
 	if a.recorder != nil {
 		a.recorder.Close()
+	}
+	if a.bus != nil {
+		a.bus.Close()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
