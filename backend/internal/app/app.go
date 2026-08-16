@@ -35,7 +35,8 @@ type App struct {
 	bus      *notify.AlertBus
 
 	server *http.Server
-	stopCh chan struct{}
+	stopCh chan struct{}       // 采集器停止信号
+	collectorDone chan struct{} // 采集器退出信号(关闭流程先等采集退出,再关消费端)
 }
 
 // New 创建 App 实例（此时还未初始化任何依赖）
@@ -90,7 +91,7 @@ func (a *App) Init() error {
 	}
 
 	a.history = monitor.NewHistory(retain, interval, alerter)
-	a.stopCh = a.history.StartCollector(interval)
+	a.stopCh, a.collectorDone = a.history.StartCollector(interval)
 
 	// 如果配置了 AGENT_HOSTS，创建远程采集器
 	var rc *monitor.RemoteCollector
@@ -143,6 +144,12 @@ func (a *App) shutdown() error {
 	slog.Info("服务正在关闭...")
 
 	close(a.stopCh)
+
+	// 先等采集器 goroutine 退出,确保不再产生新告警,
+	// 再关闭落库器与总线(避免最后一批告警在关闭瞬间被丢弃)
+	if a.collectorDone != nil {
+		<-a.collectorDone
+	}
 
 	// 停止告警落库器与告警总线并等待消费完成(防 goroutine 泄漏)
 	if a.recorder != nil {

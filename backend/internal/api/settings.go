@@ -85,6 +85,12 @@ func (h *Handler) GetAlertHistory(c *gin.Context) {
 	}
 	level := c.Query("level")
 
+	// level 枚举校验(spec: info/warning/critical,空为全部),非法值返回 400
+	if level != "" && !validAlertLevel(level) {
+		ErrorJSON(c, http.StatusBadRequest, "无效的 level 参数")
+		return
+	}
+
 	// List 返回钳制后的 page/pageSize,响应字段与实际查询语义一致
 	list, total, page, pageSize, err := h.services.AlertRecorder.List(page, pageSize, level)
 	if err != nil {
@@ -92,4 +98,13 @@ func (h *Handler) GetAlertHistory(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"list": list, "total": total, "page": page, "pageSize": pageSize})
+}
+
+// validAlertLevel 校验告警级别枚举
+func validAlertLevel(level string) bool {
+	switch level {
+	case "info", "warning", "critical":
+		return true
+	}
+	return false
 }

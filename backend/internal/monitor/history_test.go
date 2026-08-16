@@ -132,8 +132,11 @@ func TestHistory_StartCollector(t *testing.T) {
 	// 用 100ms 间隔快速验证，保留 1 秒，最多 10 个点
 	h := NewHistory(time.Second, 100*time.Millisecond, nil)
 
-	stopCh := h.StartCollector(100 * time.Millisecond)
-	defer close(stopCh)
+	stopCh, done := h.StartCollector(100 * time.Millisecond)
+	defer func() {
+		close(stopCh)
+		<-done // 等待采集 goroutine 退出(新签名:返回 stop + done)
+	}()
 
 	// 等 350ms，应该至少采到 2~3 个点
 	time.Sleep(350 * time.Millisecond)
