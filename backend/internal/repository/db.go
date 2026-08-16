@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	serverdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/domain"
+	agentdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/agent/domain"
 	userdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/glebarez/sqlite"
@@ -36,7 +37,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		&model.Log{},
 		&model.Deployment{},
 		&model.DeploymentHistory{},
-		&model.AgentTarget{},
+		&agentdomain.AgentTarget{},
 		&userdomain.User{},
 		&model.WebhookConfig{},
 		&model.AlertThreshold{},

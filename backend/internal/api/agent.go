@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/Tania-X/devops-dashboard/backend/internal/model"
+	agentdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/agent/domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,21 +17,12 @@ func (h *Handler) GetAgentList(c *gin.Context) {
 }
 
 func (h *Handler) CreateAgent(c *gin.Context) {
-	var req model.CreateAgentRequest
+	var req agentdomain.CreateAgentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
 	}
-	result, err := h.services.AgentService.Create(model.AgentTarget{
-		Name:      req.Name,
-		Host:      req.Host,
-		Port:      req.Port,
-		Username:  req.Username,
-		AuthType:  req.AuthType,
-		Password:  req.Password,
-		DeployDir: req.DeployDir,
-		AgentPort: req.AgentPort,
-	})
+	result, err := h.services.AgentService.Create(req)
 	if err != nil {
 		ErrorJSON(c, http.StatusInternalServerError, err.Error())
 		return
@@ -41,21 +32,12 @@ func (h *Handler) CreateAgent(c *gin.Context) {
 
 func (h *Handler) UpdateAgent(c *gin.Context) {
 	id := c.Param("id")
-	var req model.UpdateAgentRequest
+	var req agentdomain.UpdateAgentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrorJSON(c, http.StatusBadRequest, "请求参数错误")
 		return
 	}
-	result, err := h.services.AgentService.Update(id, model.AgentTarget{
-		Name:      req.Name,
-		Host:      req.Host,
-		Port:      req.Port,
-		Username:  req.Username,
-		AuthType:  req.AuthType,
-		Password:  req.Password,
-		DeployDir: req.DeployDir,
-		AgentPort: req.AgentPort,
-	})
+	result, err := h.services.AgentService.Update(id, req)
 	if err != nil {
 		ErrorJSON(c, http.StatusInternalServerError, err.Error())
 		return

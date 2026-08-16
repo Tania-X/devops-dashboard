@@ -1,6 +1,7 @@
 package service
 
 import (
+	agentsvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/agent/service"
 	serversvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/service"
 	usersvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/service"
 	"github.com/Tania-X/devops-dashboard/backend/internal/logs"
@@ -18,7 +19,7 @@ type Services struct {
 	LogService        *LogService
 	DashboardService  *DashboardService
 	MonitorService    *MonitorService
-	AgentService      *AgentService
+	AgentService      *agentsvc.AgentService
 	AuthService       *AuthService
 	UserService       *usersvc.UserService
 	WebhookManager        *WebhookManager
@@ -48,7 +49,7 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 		LogService:        NewLogService(logReader),
 		DashboardService:  NewDashboardService(db, history, rc, alerter),
 		MonitorService:    NewMonitorService(db),
-		AgentService:      NewAgentService(db, agentSecretKey, agentBinPath),
+		AgentService:      agentsvc.NewAgentService(db, agentSecretKey, agentBinPath),
 		AuthService:       NewAuthService(db, jwtSecret),
 		UserService:       usersvc.NewUserService(db),
 		WebhookManager:        NewWebhookManager(db, bus),
