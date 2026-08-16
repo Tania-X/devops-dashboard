@@ -56,7 +56,12 @@ func (s *SSH) Upload(client *ssh.Client, localPath, remotePath string) error {
 	}
 	defer session.Close()
 	go func() {
-		w, _ := session.StdinPipe()
+		w, err := session.StdinPipe()
+		if err != nil {
+			// StdinPipe 失败:直接返回(主流程 session.Run 会因 scp 无数据而报错,
+			// 错误不会丢失);避免对 nil 解引用 panic
+			return
+		}
 		defer w.Close()
 		fmt.Fprintf(w, "C%#o %d %s\n", 0755, len(data), filepath.Base(remotePath))
 		w.Write(data)

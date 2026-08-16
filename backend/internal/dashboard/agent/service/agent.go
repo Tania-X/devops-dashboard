@@ -125,7 +125,10 @@ func (s *AgentService) Deploy(id string) error {
 	if err := s.ssh.Exec(client, fmt.Sprintf("mkdir -p %s", target.DeployDir)); err != nil {
 		return fmt.Errorf("创建目录失败: %w", err)
 	}
-	s.ssh.Exec(client, fmt.Sprintf("pkill -f %s/agent || true", target.DeployDir))
+	// 停止旧 agent(与 Stop 一致检查错误;否则旧进程可能占用端口导致新 agent 启动失败)
+	if err := s.ssh.Exec(client, fmt.Sprintf("pkill -f %s/agent || true", target.DeployDir)); err != nil {
+		return fmt.Errorf("停止旧 agent 失败: %w", err)
+	}
 	if err := s.ssh.Upload(client, s.agentBin, fmt.Sprintf("%s/agent", target.DeployDir)); err != nil {
 		return fmt.Errorf("上传 agent 失败: %w", err)
 	}
