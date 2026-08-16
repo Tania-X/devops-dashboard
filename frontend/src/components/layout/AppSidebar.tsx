@@ -8,6 +8,7 @@ import {
   NodeIndexOutlined,
   UserOutlined,
   SettingOutlined,
+  AlertOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +21,12 @@ const menuItems = [
     key: '/',
     icon: <DashboardOutlined />,
     label: '系统概览',
+    perm: 'dashboard:view',
+  },
+  {
+    key: '/alerts',
+    icon: <AlertOutlined />,
+    label: '告警历史',
     perm: 'dashboard:view',
   },
   {

@@ -15,6 +15,7 @@ import type {
   CreateAgentRequest,
   CreateRoleRequest,
   CreateUserRequest,
+  GetAlertHistoryParams,
   GetDashboardAlertsParams,
   GetDashboardTrendParams,
   GetLogListParams,
@@ -57,6 +58,7 @@ import type {
   DeleteRole200,
   DeploymentHistoryItem,
   DeploymentItem,
+  GetAlertHistory200,
   HostInfo,
   ListAuditLogs200,
   ListPermissionGroups200,
@@ -148,6 +150,20 @@ const getDashboardAlerts = <TData = AxiosResponse<AlertItem[]>>(
  ): Promise<TData> => {
     return axios.default.get(
       `/api/dashboard/alerts`,{
+    ...options,
+        params: {...params, ...options?.params},}
+    );
+  }
+
+/**
+ * 查询落库的告警历史记录，支持级别筛选与分页（最新在前）
+ * @summary 告警历史分页查询
+ */
+const getAlertHistory = <TData = AxiosResponse<GetAlertHistory200>>(
+    params?: GetAlertHistoryParams, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.default.get(
+      `/api/alerts`,{
     ...options,
         params: {...params, ...options?.params},}
     );
@@ -541,13 +557,14 @@ const deleteUser = <TData = AxiosResponse<void>>(
     );
   }
 
-return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,getAlertThresholds,updateAlertThreshold,createRole,listRoles,listPermissionGroups,updateRolePermissions,deleteRole,updateRoleMeta,listAuditLogs,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
+return {login,getMe,logout,getDashboardMetrics,getDashboardTrend,getDashboardAlerts,getAlertHistory,getServerList,getServerDetail,getLogList,getDeploymentList,getDeploymentHistory,getProcessList,getProcessDetail,getHostInfo,getWebhookConfig,updateWebhookConfig,testWebhookConfig,getAlertThresholds,updateAlertThreshold,createRole,listRoles,listPermissionGroups,updateRolePermissions,deleteRole,updateRoleMeta,listAuditLogs,getAgentList,createAgent,updateAgent,deleteAgent,deployAgent,stopAgent,checkAgentStatus,getUserList,createUser,updateUser,deleteUser}};
 export type LoginResult = AxiosResponse<LoginResponse>
 export type GetMeResult = AxiosResponse<MeResponse>
 export type LogoutResult = AxiosResponse<void>
 export type GetDashboardMetricsResult = AxiosResponse<DashboardMetrics>
 export type GetDashboardTrendResult = AxiosResponse<DashboardTrend>
 export type GetDashboardAlertsResult = AxiosResponse<AlertItem[]>
+export type GetAlertHistoryResult = AxiosResponse<GetAlertHistory200>
 export type GetServerListResult = AxiosResponse<PagedResultServerItem>
 export type GetServerDetailResult = AxiosResponse<ServerDetail>
 export type GetLogListResult = AxiosResponse<PagedResultLogItem>
@@ -590,6 +607,8 @@ export const getGetDashboardMetricsResponseMock = (overrideResponse: Partial< Da
 export const getGetDashboardTrendResponseMock = (overrideResponse: Partial< DashboardTrend > = {}): DashboardTrend => ({timeLabels: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), cpuData: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.number.float({min: undefined, max: undefined, fractionDigits: 2}))), memoryData: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => (faker.number.float({min: undefined, max: undefined, fractionDigits: 2}))), ...overrideResponse})
 
 export const getGetDashboardAlertsResponseMock = (): AlertItem[] => (Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), level: faker.helpers.arrayElement(['info','warning','critical'] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), source: faker.string.alpha({length: {min: 10, max: 20}}), time: `${faker.date.past().toISOString().split('.')[0]}Z`})))
+
+export const getGetAlertHistoryResponseMock = (overrideResponse: Partial< GetAlertHistory200 > = {}): GetAlertHistory200 => ({list: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.number.int({min: undefined, max: undefined}), level: faker.helpers.arrayElement(['info','warning','critical'] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), source: faker.string.alpha({length: {min: 10, max: 20}}), time: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.helpers.arrayElement([`${faker.date.past().toISOString().split('.')[0]}Z`, undefined])})), total: faker.number.int({min: undefined, max: undefined}), page: faker.number.int({min: undefined, max: undefined}), pageSize: faker.number.int({min: undefined, max: undefined}), ...overrideResponse})
 
 export const getGetServerListResponseMock = (overrideResponse: Partial< PagedResultServerItem > = {}): PagedResultServerItem => ({list: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), hostname: faker.string.alpha({length: {min: 10, max: 20}}), ip: faker.string.alpha({length: {min: 10, max: 20}}), os: faker.string.alpha({length: {min: 10, max: 20}}), cpuCores: faker.number.int({min: undefined, max: undefined}), memoryGb: faker.number.int({min: undefined, max: undefined}), status: faker.helpers.arrayElement(['running','stopped','maintenance'] as const), uptime: faker.string.alpha({length: {min: 10, max: 20}})})), total: faker.number.int({min: undefined, max: undefined}), page: faker.number.int({min: undefined, max: undefined}), pageSize: faker.number.int({min: undefined, max: undefined}), ...overrideResponse})
 
@@ -712,6 +731,18 @@ export const getGetDashboardAlertsMockHandler = (overrideResponse?: AlertItem[] 
     return new HttpResponse(JSON.stringify(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getGetDashboardAlertsResponseMock()),
+      { status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+  }, options)
+}
+
+export const getGetAlertHistoryMockHandler = (overrideResponse?: GetAlertHistory200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<GetAlertHistory200> | GetAlertHistory200), options?: RequestHandlerOptions) => {
+  return http.get('*/api/alerts', async (info) => {await delay(1000);
+  
+    return new HttpResponse(JSON.stringify(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAlertHistoryResponseMock()),
       { status: 200,
         headers: { 'Content-Type': 'application/json' }
       })
@@ -1088,6 +1119,7 @@ export const getDevOpsDashboardAPIMock = () => [
   getGetDashboardMetricsMockHandler(),
   getGetDashboardTrendMockHandler(),
   getGetDashboardAlertsMockHandler(),
+  getGetAlertHistoryMockHandler(),
   getGetServerListMockHandler(),
   getGetServerDetailMockHandler(),
   getGetLogListMockHandler(),

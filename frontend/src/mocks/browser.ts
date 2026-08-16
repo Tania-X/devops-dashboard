@@ -2,7 +2,7 @@ import { setupWorker } from 'msw/browser';
 import { http, HttpResponse, delay } from 'msw';
 import { faker } from '@faker-js/faker';
 import { getDevOpsDashboardAPIMock } from '../api/client';
-import type { ServerItem, ServerDetail, PagedResultServerItem, LogItem, PagedResultLogItem, DeploymentItem, DeploymentHistoryItem, DashboardMetrics, DashboardTrend, AlertItem } from '../api/model';
+import type { ServerItem, ServerDetail, PagedResultServerItem, LogItem, PagedResultLogItem, DeploymentItem, DeploymentHistoryItem, DashboardMetrics, DashboardTrend, AlertItem, Alert, AlertLevel, GetAlertHistory200 } from '../api/model';
 import { MetricValueStatus } from '../api/model';
 
 // ============================================
@@ -397,6 +397,50 @@ const customDashboardAlertsHandler = http.get('*/api/dashboard/alerts', async ({
 });
 
 // ============================================
+// Alert History Mock 数据池(固定,支持级别筛选 + 分页)
+// ============================================
+
+const ALERT_LEVELS: AlertLevel[] = ['info', 'warning', 'critical'];
+const ALERT_MESSAGES: Record<AlertLevel, string> = {
+  info: 'CPU 使用率已恢复至 30.0%',
+  warning: '内存 使用率 78.0% — 超过 warning 阈值 (70%)',
+  critical: 'CPU 使用率 95.0% — 超过 critical 阈值 (80%)',
+};
+
+/** 固定数据池:3 级别各 4 条,时间倒序(与真实接口一致) */
+const ALERT_HISTORY: Alert[] = Array.from({ length: 12 }, (_, i) => {
+  const level = ALERT_LEVELS[i % 3];
+  const hour = String(8 + Math.floor(i / 3)).padStart(2, '0');
+  const minute = String((i * 7) % 60).padStart(2, '0');
+  return {
+    id: i + 1,
+    level,
+    message: ALERT_MESSAGES[level],
+    source: 'localhost',
+    time: `08-16 ${hour}:${minute}`,
+    createdAt: `2026-08-16T${hour}:${minute}:00.000Z`,
+  };
+}).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+
+/** 自定义 Alert History Handler — 固定池 + 级别筛选 + 分页(可可靠验证) */
+const customAlertHistoryHandler = http.get('*/api/alerts', async ({ request }) => {
+  console.log('[MSW] intercepted GET /api/alerts');
+  await delay(200);
+  const url = new URL(request.url);
+  const level = url.searchParams.get('level');
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+  const pageSize = Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10));
+
+  let filtered = ALERT_HISTORY;
+  if (level) {
+    filtered = ALERT_HISTORY.filter((a) => a.level === level);
+  }
+  const total = filtered.length;
+  const list = filtered.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
+  return HttpResponse.json({ list, total, page, pageSize } as GetAlertHistory200);
+});
+
+// ============================================
 // 启动 Worker — 自定义 handler 放前面优先匹配
 // ============================================
 
@@ -404,6 +448,7 @@ export const worker = setupWorker(
   customDashboardMetricsHandler,
   customDashboardTrendHandler,
   customDashboardAlertsHandler,
+  customAlertHistoryHandler,
   customLogListHandler,
   customServerListHandler,
   customServerDetailHandler,

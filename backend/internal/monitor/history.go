@@ -82,10 +82,13 @@ func (h *History) Query(hours int) (labels []string, cpu []float64, memory []flo
 }
 
 // StartCollector 启动后台 goroutine 定时采样
-// 返回 stop channel，调用方通过 close(stopCh) 来停止采集
-func (h *History) StartCollector(interval time.Duration) chan struct{} {
+// 返回 (stopCh, done):调用方 close(stopCh) 停止采集,<-done 等待采集 goroutine 退出
+// (确保退出前不再产生新告警,供关闭流程先停采集再关消费端,避免最后一批告警丢失)
+func (h *History) StartCollector(interval time.Duration) (chan struct{}, chan struct{}) {
 	stopCh := make(chan struct{})
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 
@@ -110,5 +113,5 @@ func (h *History) StartCollector(interval time.Duration) chan struct{} {
 			}
 		}
 	}()
-	return stopCh
+	return stopCh, done
 }

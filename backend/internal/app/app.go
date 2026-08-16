@@ -16,6 +16,7 @@ import (
 	"github.com/Tania-X/devops-dashboard/backend/internal/authz"
 	"github.com/Tania-X/devops-dashboard/backend/internal/config"
 	"github.com/Tania-X/devops-dashboard/backend/internal/monitor"
+	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"github.com/Tania-X/devops-dashboard/backend/internal/notify"
 	"github.com/Tania-X/devops-dashboard/backend/internal/repository"
 	"github.com/Tania-X/devops-dashboard/backend/internal/service"
@@ -30,9 +31,12 @@ type App struct {
 	db       *gorm.DB
 	history  *monitor.History
 	services *service.Services
+	recorder *service.AlertRecorder
+	bus      *notify.AlertBus
 
 	server *http.Server
-	stopCh chan struct{}
+	stopCh chan struct{}       // 采集器停止信号
+	collectorDone chan struct{} // 采集器退出信号(关闭流程先等采集退出,再关消费端)
 }
 
 // New 创建 App 实例（此时还未初始化任何依赖）
@@ -75,11 +79,19 @@ func (a *App) Init() error {
 
 	// 告警总线：Alerter 产生告警 → channel → Webhook 通知器（异步，不阻塞采集）
 	bus := notify.NewAlertBus()
+	a.bus = bus
 	bus.Run()
-	alerter.OnAlert = bus.Publish
+
+	// 告警历史落库器（异步）:告警同时进总线(推送)与落库(历史查询)
+	recorder := service.NewAlertRecorder(a.db)
+	a.recorder = recorder
+	alerter.OnAlert = func(e model.AlertItem) {
+		bus.Publish(e)
+		recorder.Record(e)
+	}
 
 	a.history = monitor.NewHistory(retain, interval, alerter)
-	a.stopCh = a.history.StartCollector(interval)
+	a.stopCh, a.collectorDone = a.history.StartCollector(interval)
 
 	// 如果配置了 AGENT_HOSTS，创建远程采集器
 	var rc *monitor.RemoteCollector
@@ -90,7 +102,7 @@ func (a *App) Init() error {
 		slog.Info("使用本地采集模式（未配置 AGENT_HOSTS）")
 	}
 
-	a.services = service.NewServices(a.db, a.history, rc, alerter, bus, a.cfg.JwtSecret, a.cfg.AgentSecretKey, a.cfg.AgentBinPath)
+	a.services = service.NewServices(a.db, a.history, rc, alerter, bus, recorder, a.cfg.JwtSecret, a.cfg.AgentSecretKey, a.cfg.AgentBinPath)
 
 	handler := api.NewHandler(a.services)
 	a.server = &http.Server{
@@ -132,6 +144,20 @@ func (a *App) shutdown() error {
 	slog.Info("服务正在关闭...")
 
 	close(a.stopCh)
+
+	// 先等采集器 goroutine 退出,确保不再产生新告警,
+	// 再关闭落库器与总线(避免最后一批告警在关闭瞬间被丢弃)
+	if a.collectorDone != nil {
+		<-a.collectorDone
+	}
+
+	// 停止告警落库器与告警总线并等待消费完成(防 goroutine 泄漏)
+	if a.recorder != nil {
+		a.recorder.Close()
+	}
+	if a.bus != nil {
+		a.bus.Close()
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

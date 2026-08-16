@@ -134,6 +134,56 @@ paths:
                 items:
                   $ref: '#/components/schemas/AlertItem'
 
+  /api/alerts:
+    get:
+      operationId: getAlertHistory
+      summary: 告警历史分页查询
+      description: 查询落库的告警历史记录，支持级别筛选与分页（最新在前）
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: 页码
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: 每页条数
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: level
+          in: query
+          description: 级别筛选（info/warning/critical，空为全部）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功返回告警历史分页数据
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [list, total, page, pageSize]
+                properties:
+                  list:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/servers:
     get:
       operationId: getServerList
@@ -1055,6 +1105,28 @@ components:
           type: string
           format: date-time
           example: "2026-07-18T14:32:00Z"
+
+    Alert:
+      type: object
+      required: [id, level, message, source, time]
+      properties:
+        id:
+          type: integer
+        level:
+          type: string
+          enum: [info, warning, critical]
+        message:
+          type: string
+        source:
+          type: string
+        time:
+          type: string
+          description: 展示格式 "01-02 15:04"
+          example: "08-16 02:30"
+        createdAt:
+          type: string
+          format: date-time
+          description: 落库时间（排序依据）
 
     # ---------- Server ----------
     ServerItem:
