@@ -15,6 +15,10 @@ import (
 type SSH struct{}
 
 // Connect 建立 SSH 连接(密码认证)
+//
+// 安全取舍(显式说明):HostKeyCallback 使用 InsecureIgnoreHostKey 跳过主机密钥
+// 校验,存在 MITM 风险。本部署场景为可信环境 + 密码认证的个人学习项目,接受该
+// 风险;生产环境应改为 known_hosts 校验或固定主机指纹(ssh.KnownHosts / 自校验)。
 func (s *SSH) Connect(host string, port int, user, password string) (*ssh.Client, error) {
 	config := &ssh.ClientConfig{
 		User:            user,

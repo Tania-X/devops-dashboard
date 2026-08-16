@@ -179,6 +179,10 @@ func (s *AgentService) StatusCheck(id string) (string, error) {
 	url := fmt.Sprintf("http://%s:%d/api/health", target.Host, target.AgentPort)
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	resp, err := httpClient.Get(url)
+	if resp != nil {
+		// 关闭响应体,归还连接池(否则每次健康检查泄漏一个连接)
+		defer resp.Body.Close()
+	}
 	if err == nil && resp != nil && resp.StatusCode == 200 {
 		target.MarkOnline()
 	} else {
