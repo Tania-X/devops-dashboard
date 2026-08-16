@@ -205,6 +205,16 @@ Ant Design 5.x 的 Row/Col 是 **24 列栅格**，不是 Bootstrap 的 12 列。
 
 ---
 
+## 四·五、已知安全取舍(登记)
+
+> AI review 要求登记的安全取舍,记录原因与迁移计划。
+
+| 取舍 | 风险 | 原因 | 迁移计划 |
+|--|--|--|--|
+| SSH `InsecureIgnoreHostKey`(跳过主机密钥校验) | MITM 可截获密码/篡改部署 | 个人学习项目 + 远程主机动态变化,known_hosts 维护成本高;仅用于部署自研 agent 的可信内网场景 | 部署到生产前改为 `ssh.KnownHosts` 或固定指纹校验(infra/ssh.go) |
+
+---
+
 ## 五、环境速查
 
 ```bash
