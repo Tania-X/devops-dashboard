@@ -59,27 +59,15 @@ func (s *AgentService) Update(id string, req agentdomain.UpdateAgentRequest) (*a
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
-	if req.Name != "" {
-		existing.Name = req.Name
-	}
-	if req.Host != "" {
-		existing.Host = req.Host
-	}
-	if req.Port != 0 {
-		existing.Port = req.Port
-	}
-	if req.Username != "" {
-		existing.Username = req.Username
-	}
-	if req.AuthType != "" {
-		existing.AuthType = req.AuthType
-	}
-	if req.DeployDir != "" {
-		existing.DeployDir = req.DeployDir
-	}
-	if req.AgentPort != 0 {
-		existing.AgentPort = req.AgentPort
-	}
+	// 普通字段无条件覆盖(与旧版一致,支持清空;前端总是提交全量表单)。
+	// 仅密码特殊:留空表示不修改。
+	existing.Name = req.Name
+	existing.Host = req.Host
+	existing.Port = req.Port
+	existing.Username = req.Username
+	existing.AuthType = req.AuthType
+	existing.DeployDir = req.DeployDir
+	existing.AgentPort = req.AgentPort
 	if req.Password != "" {
 		encrypted, err := s.crypto.Encrypt(req.Password)
 		if err != nil {
@@ -182,12 +170,14 @@ func (s *AgentService) StatusCheck(id string) (string, error) {
 	url := fmt.Sprintf("http://%s:%d/api/health", target.Host, target.AgentPort)
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	resp, err := httpClient.Get(url)
-	if resp != nil {
-		// 关闭响应体,归还连接池(否则每次健康检查泄漏一个连接)
+	if err == nil && resp != nil {
+		// 关闭响应体归还连接池(仅成功响应分支注册 defer,err 非 nil 时无 Body 可关)
 		defer resp.Body.Close()
-	}
-	if err == nil && resp != nil && resp.StatusCode == 200 {
-		target.MarkOnline()
+		if resp.StatusCode == 200 {
+			target.MarkOnline()
+		} else {
+			target.MarkOffline()
+		}
 	} else {
 		target.MarkOffline()
 	}

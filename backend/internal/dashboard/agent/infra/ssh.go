@@ -55,13 +55,12 @@ func (s *SSH) Upload(client *ssh.Client, localPath, remotePath string) error {
 		return err
 	}
 	defer session.Close()
+	// StdinPipe 必须在 Run 之前同步建立(并发建立存在竞态,可能管道未就绪导致写入失败)
+	w, err := session.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("建立 stdin 管道失败: %w", err)
+	}
 	go func() {
-		w, err := session.StdinPipe()
-		if err != nil {
-			// StdinPipe 失败:直接返回(主流程 session.Run 会因 scp 无数据而报错,
-			// 错误不会丢失);避免对 nil 解引用 panic
-			return
-		}
 		defer w.Close()
 		fmt.Fprintf(w, "C%#o %d %s\n", 0755, len(data), filepath.Base(remotePath))
 		w.Write(data)
