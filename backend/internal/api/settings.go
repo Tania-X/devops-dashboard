@@ -74,8 +74,15 @@ func (h *Handler) UpdateAlertThreshold(c *gin.Context) {
 
 // GetAlertHistory 告警历史分页查询(落库记录,支持级别筛选)
 func (h *Handler) GetAlertHistory(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
+	// 非法入参显式钳制为默认值(Atoi 错误与未传参语义一致,不静默吞错)
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil {
+		page = 1
+	}
+	pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
+	if err != nil {
+		pageSize = 20
+	}
 	level := c.Query("level")
 
 	// List 返回钳制后的 page/pageSize,响应字段与实际查询语义一致
