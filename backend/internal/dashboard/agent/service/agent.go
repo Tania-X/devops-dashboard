@@ -1,14 +1,35 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	agentdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/agent/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/dashboard/agent/infra"
 	"gorm.io/gorm"
 )
+
+// deployDirPattern 部署目录白名单(防命令注入):
+// DeployDir 会拼接进远端 shell 命令,仅允许路径安全字符,拒绝 ; & | $ ` 空格 引号 等
+var deployDirPattern = regexp.MustCompile(`^[A-Za-z0-9_./-]+$`)
+
+// validDeployDir 部署目录安全校验(入站 + 使用点双重防护)
+func validDeployDir(dir string) error {
+	if dir == "" {
+		return errors.New("部署目录不能为空")
+	}
+	if strings.HasPrefix(dir, "-") {
+		return errors.New("部署目录不能以 - 开头")
+	}
+	if !deployDirPattern.MatchString(dir) {
+		return errors.New("部署目录含非法字符,仅允许字母数字和 ._/-")
+	}
+	return nil
+}
 
 // AgentService Agent 应用服务(编排者):查实体 → 校验/状态机 → infra(SSH/加密)→ 落库。
 // SSH/加密细节已抽离到 infra,domain 不依赖基础设施。
@@ -36,6 +57,9 @@ func (s *AgentService) List() ([]agentdomain.AgentTarget, error) {
 
 // Create 创建 Agent:工厂生成实体(ID + 初始状态)→ 密码加密(infra)→ 落库
 func (s *AgentService) Create(req agentdomain.CreateAgentRequest) (*agentdomain.AgentTarget, error) {
+	if err := validDeployDir(req.DeployDir); err != nil {
+		return nil, err
+	}
 	target := agentdomain.NewAgent(req.Name, req.Host, req.Port, req.Username, req.AuthType, req.DeployDir, req.AgentPort)
 	if req.Password != "" {
 		encrypted, err := s.crypto.Encrypt(req.Password)
@@ -57,6 +81,9 @@ func (s *AgentService) Create(req agentdomain.CreateAgentRequest) (*agentdomain.
 func (s *AgentService) Update(id string, req agentdomain.UpdateAgentRequest) (*agentdomain.AgentTarget, error) {
 	var existing agentdomain.AgentTarget
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	if err := validDeployDir(req.DeployDir); err != nil {
 		return nil, err
 	}
 	// 普通字段无条件覆盖(与旧版一致,支持清空;前端总是提交全量表单)。
@@ -101,6 +128,10 @@ func (s *AgentService) Deploy(id string) error {
 	if err != nil {
 		return fmt.Errorf("未找到目标: %w", err)
 	}
+	// 使用点兜底校验(防命令注入;Create/Update 已入站拦截)
+	if err := validDeployDir(target.DeployDir); err != nil {
+		return fmt.Errorf("部署目录非法: %w", err)
+	}
 	password, err := s.crypto.Decrypt(target.Password)
 	if err != nil {
 		return fmt.Errorf("密码解密失败: %w", err)
@@ -139,6 +170,9 @@ func (s *AgentService) Stop(id string) error {
 	target, err := s.GetByID(id)
 	if err != nil {
 		return err
+	}
+	if err := validDeployDir(target.DeployDir); err != nil {
+		return fmt.Errorf("部署目录非法: %w", err)
 	}
 	if err := target.CheckStoppable(); err != nil {
 		return err
