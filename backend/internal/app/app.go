@@ -31,6 +31,7 @@ type App struct {
 	db       *gorm.DB
 	history  *monitor.History
 	services *service.Services
+	recorder *service.AlertRecorder
 
 	server *http.Server
 	stopCh chan struct{}
@@ -80,6 +81,7 @@ func (a *App) Init() error {
 
 	// 告警历史落库器（异步）:告警同时进总线(推送)与落库(历史查询)
 	recorder := service.NewAlertRecorder(a.db)
+	a.recorder = recorder
 	alerter.OnAlert = func(e model.AlertItem) {
 		bus.Publish(e)
 		recorder.Record(e)
@@ -139,6 +141,11 @@ func (a *App) shutdown() error {
 	slog.Info("服务正在关闭...")
 
 	close(a.stopCh)
+
+	// 停止告警落库器并等待消费完成(防 goroutine 泄漏)
+	if a.recorder != nil {
+		a.recorder.Close()
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
