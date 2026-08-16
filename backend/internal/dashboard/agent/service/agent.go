@@ -57,9 +57,7 @@ func (s *AgentService) List() ([]agentdomain.AgentTarget, error) {
 
 // Create 创建 Agent:工厂生成实体(ID + 初始状态)→ 密码加密(infra)→ 落库
 func (s *AgentService) Create(req agentdomain.CreateAgentRequest) (*agentdomain.AgentTarget, error) {
-	if err := validDeployDir(req.DeployDir); err != nil {
-		return nil, err
-	}
+	// deployDir 契约上可选(见 spec),部署时才必需,此处不强制
 	target := agentdomain.NewAgent(req.Name, req.Host, req.Port, req.Username, req.AuthType, req.DeployDir, req.AgentPort)
 	if req.Password != "" {
 		encrypted, err := s.crypto.Encrypt(req.Password)
@@ -83,10 +81,7 @@ func (s *AgentService) Update(id string, req agentdomain.UpdateAgentRequest) (*a
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
-	if err := validDeployDir(req.DeployDir); err != nil {
-		return nil, err
-	}
-	// 普通字段无条件覆盖(与旧版一致,支持清空;前端总是提交全量表单)。
+	// 普通字段无条件覆盖(deployDir 允许清空,部署时兜底校验)(与旧版一致,支持清空;前端总是提交全量表单)。
 	// 仅密码特殊:留空表示不修改。
 	existing.Name = req.Name
 	existing.Host = req.Host
