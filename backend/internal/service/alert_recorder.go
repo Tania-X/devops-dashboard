@@ -3,10 +3,15 @@ package service
 import (
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"gorm.io/gorm"
 )
+
+// alertRetentionDays 告警历史保留天数:启动时清理早于该时间的记录,防表无限增长。
+// 告警是低频事件,按天清理足够;如未来需要精确保留策略可改为定时任务。
+const alertRetentionDays = 30
 
 // AlertRecorder 告警历史落库器(异步,不阻塞采集)。
 // 设计:Alerter.OnAlert 同步回调中只做 channel 投递(ch 满则丢弃,告警内存缓冲已有),
@@ -20,16 +25,25 @@ type AlertRecorder struct {
 	once   sync.Once
 }
 
-// NewAlertRecorder 创建落库器并启动消费 goroutine
+// NewAlertRecorder 创建落库器并启动消费 goroutine(启动时清理过期历史)
 func NewAlertRecorder(db *gorm.DB) *AlertRecorder {
 	r := &AlertRecorder{
 		db:     db,
 		ch:     make(chan model.AlertItem, 128),
 		stopCh: make(chan struct{}),
 	}
+	r.cleanup()
 	r.wg.Add(1)
 	go r.run()
 	return r
+}
+
+// cleanup 删除超过保留期的告警历史(启动时执行一次;created_at 走索引)
+func (r *AlertRecorder) cleanup() {
+	cutoff := time.Now().Add(-alertRetentionDays * 24 * time.Hour)
+	if err := r.db.Where("created_at < ?", cutoff).Delete(&model.Alert{}).Error; err != nil {
+		slog.Error("清理过期告警历史失败", "err", err)
+	}
 }
 
 // Record 非阻塞投递一条告警到落库队列(关闭后或满则丢弃,不阻塞采集主链路)
@@ -82,8 +96,9 @@ func (r *AlertRecorder) save(e model.AlertItem) {
 	}
 }
 
-// List 分页查询告警历史(按落库时间倒序,最新在前);level 为空表示全部级别
-func (r *AlertRecorder) List(page, pageSize int, level string) ([]model.Alert, int64, error) {
+// List 分页查询告警历史(按落库时间倒序,最新在前);level 为空表示全部级别。
+// 返回钳制后的 page/pageSize,保证响应字段与实际查询语义一致(如 pageSize=200 → 实际 20)。
+func (r *AlertRecorder) List(page, pageSize int, level string) ([]model.Alert, int64, int, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -98,7 +113,7 @@ func (r *AlertRecorder) List(page, pageSize int, level string) ([]model.Alert, i
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, page, pageSize, err
 	}
 
 	var list []model.Alert
@@ -106,7 +121,7 @@ func (r *AlertRecorder) List(page, pageSize int, level string) ([]model.Alert, i
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&list).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, page, pageSize, err
 	}
-	return list, total, nil
+	return list, total, page, pageSize, nil
 }

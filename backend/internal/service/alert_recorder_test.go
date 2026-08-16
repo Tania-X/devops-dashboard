@@ -68,3 +68,60 @@ func TestAlertRecorder_Close(t *testing.T) {
 		}
 	})
 }
+
+func TestAlertRecorder_ListPagination(t *testing.T) {
+	db := newRecorderTestDB(t)
+	r := NewAlertRecorder(db)
+	// 投 15 条(等消费)
+	for i := 0; i < 15; i++ {
+		r.Record(model.AlertItem{Level: "warning", Message: "m"})
+	}
+	time.Sleep(150 * time.Millisecond)
+
+	t.Run("pageSize 超上限被钳制且响应一致", func(t *testing.T) {
+		list, total, _, pageSize, err := r.List(1, 200, "")
+		if err != nil {
+			t.Fatalf("List 失败: %v", err)
+		}
+		if pageSize != 20 {
+			t.Errorf("pageSize 应钳制为 20, got %d", pageSize)
+		}
+		if len(list) != 20 && total != 15 {
+			t.Errorf("list 长度应取 min(total,20)=15, got %d (total=%d)", len(list), total)
+		}
+	})
+
+	t.Run("非法 page 被钳制为 1", func(t *testing.T) {
+		_, _, page, _, err := r.List(0, 10, "")
+		if err != nil {
+			t.Fatalf("List 失败: %v", err)
+		}
+		if page != 1 {
+			t.Errorf("page 应钳制为 1, got %d", page)
+		}
+	})
+}
+
+func TestAlertRecorder_Cleanup(t *testing.T) {
+	db := newRecorderTestDB(t)
+	// 插入一条 40 天前的记录(应被清理)
+	old := model.Alert{Level: "critical", Message: "old", Time: "07-01 00:00", CreatedAt: time.Now().Add(-40 * 24 * time.Hour)}
+	db.Create(&old)
+	// 插入一条今天的(应保留)
+	recent := model.Alert{Level: "info", Message: "recent", Time: "08-16 12:00", CreatedAt: time.Now()}
+	db.Create(&recent)
+
+	_ = NewAlertRecorder(db) // 启动时清理
+	time.Sleep(100 * time.Millisecond)
+
+	var count int64
+	db.Model(&model.Alert{}).Count(&count)
+	if count != 1 {
+		t.Fatalf("过期记录应被清理,只剩 1 条, got %d", count)
+	}
+	var msgs []string
+	db.Model(&model.Alert{}).Pluck("message", &msgs)
+	if len(msgs) != 1 || msgs[0] != "recent" {
+		t.Fatalf("应只剩 recent, got %v", msgs)
+	}
+}

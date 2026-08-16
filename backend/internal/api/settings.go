@@ -78,7 +78,8 @@ func (h *Handler) GetAlertHistory(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
 	level := c.Query("level")
 
-	list, total, err := h.services.AlertRecorder.List(page, pageSize, level)
+	// List 返回钳制后的 page/pageSize,响应字段与实际查询语义一致
+	list, total, page, pageSize, err := h.services.AlertRecorder.List(page, pageSize, level)
 	if err != nil {
 		ErrorJSON(c, http.StatusInternalServerError, "查询告警历史失败")
 		return
