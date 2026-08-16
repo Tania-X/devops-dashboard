@@ -102,8 +102,12 @@ func (r *AlertRecorder) List(page, pageSize int, level string) ([]model.Alert, i
 	if page < 1 {
 		page = 1
 	}
-	if pageSize < 1 || pageSize > 100 {
+	// 钳制与 spec 一致:pageSize 默认 20,上限 100(与 v1-api.yaml maximum:100 对齐)
+	if pageSize < 1 {
 		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
 	}
 
 	q := r.db.Model(&model.Alert{})

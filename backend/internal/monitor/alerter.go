@@ -101,8 +101,11 @@ func (a *Alerter) Evaluate(snapshot *MetricSnapshot) {
 }
 
 func (a *Alerter) evaluateMetric(name string, value float64, t MetricThreshold) {
+	// 收集本次需要通知的条目,锁外统一触发(回调不得在持锁状态下执行:
+	// 若未来回调引入阻塞逻辑,会拖住采集主链路)
+	var pending []model.AlertItem
+
 	a.mu.Lock()
-	defer a.mu.Unlock()
 
 	currentStatus := "normal"
 	if value >= t.Crit {
@@ -122,12 +125,8 @@ func (a *Alerter) evaluateMetric(name string, value float64, t MetricThreshold) 
 			a.streakStatus[name] = currentStatus
 		}
 		a.streak[name]++
-		// 未达确认周期 → 不告警(仍在确认中,prevStatus 不变)
-		if a.streak[name] < a.confirmPeriods {
-			return
-		}
-		// 已达确认周期:若与已确认状态不同 → 触发/升级
-		if currentStatus != prevStatus {
+		// 已达确认周期且与已确认状态不同 → 触发/升级(去重由 prevStatus 保证)
+		if a.streak[name] >= a.confirmPeriods && currentStatus != prevStatus {
 			a.prevStatus[name] = currentStatus
 			threshold := t.Warn
 			label := "warning"
@@ -135,23 +134,32 @@ func (a *Alerter) evaluateMetric(name string, value float64, t MetricThreshold) 
 				threshold = t.Crit
 				label = "critical"
 			}
-			a.addAlert(currentStatus, fmt.Sprintf("%s 使用率 %.1f%% — 超过 %s 阈值 (%.0f%%)",
-				metricLabel(name), value, label, threshold), name, value)
+			pending = append(pending, a.addAlert(currentStatus, fmt.Sprintf("%s 使用率 %.1f%% — 超过 %s 阈值 (%.0f%%)",
+				metricLabel(name), value, label, threshold), name, value))
 		}
-		// 状态相同且已达确认周期 → 不重复(去重)
-		return
+	} else {
+		// ── 正常状态:重置计数;之前有确认异常 → 恢复通知 ──
+		a.streak[name] = 0
+		a.streakStatus[name] = ""
+		if prevStatus != "" && prevStatus != "normal" {
+			a.prevStatus[name] = "normal"
+			pending = append(pending, a.addAlert("info", fmt.Sprintf("%s 使用率已恢复至 %.1f%%", metricLabel(name), value), name, value))
+		}
 	}
 
-	// ── 正常状态:重置计数;之前有确认异常 → 恢复通知 ──
-	a.streak[name] = 0
-	a.streakStatus[name] = ""
-	if prevStatus != "" && prevStatus != "normal" {
-		a.prevStatus[name] = "normal"
-		a.addAlert("info", fmt.Sprintf("%s 使用率已恢复至 %.1f%%", metricLabel(name), value), name, value)
+	a.mu.Unlock()
+
+	// 锁外触发外部通知回调(如 Webhook 推送/历史落库)
+	for _, e := range pending {
+		if a.OnAlert != nil {
+			a.OnAlert(e)
+		}
 	}
 }
 
-func (a *Alerter) addAlert(level, message, metric string, value float64) {
+// addAlert 追加一条告警到内存缓冲并返回该条目(仅追加,不触发回调;
+// 回调由 evaluateMetric 在锁外统一触发)
+func (a *Alerter) addAlert(level, message, metric string, value float64) model.AlertItem {
 	a.nextID++
 	entry := model.AlertItem{
 		ID:      fmt.Sprintf("alert-%03d", a.nextID),
@@ -164,11 +172,7 @@ func (a *Alerter) addAlert(level, message, metric string, value float64) {
 	if len(a.alerts) > a.maxAlerts {
 		a.alerts = a.alerts[len(a.alerts)-a.maxAlerts:]
 	}
-
-	// 触发外部通知回调（如 Webhook 推送）
-	if a.OnAlert != nil {
-		a.OnAlert(entry)
-	}
+	return entry
 }
 
 // GetAlerts 返回最近的告警列表（按时间倒序，最新的在前）

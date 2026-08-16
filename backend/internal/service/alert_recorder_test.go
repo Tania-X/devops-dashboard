@@ -78,16 +78,16 @@ func TestAlertRecorder_ListPagination(t *testing.T) {
 	}
 	time.Sleep(150 * time.Millisecond)
 
-	t.Run("pageSize 超上限被钳制且响应一致", func(t *testing.T) {
+	t.Run("pageSize 超上限钳制为 100(spec 一致)", func(t *testing.T) {
 		list, total, _, pageSize, err := r.List(1, 200, "")
 		if err != nil {
 			t.Fatalf("List 失败: %v", err)
 		}
-		if pageSize != 20 {
-			t.Errorf("pageSize 应钳制为 20, got %d", pageSize)
+		if pageSize != 100 {
+			t.Errorf("pageSize 应钳制为 100, got %d", pageSize)
 		}
-		if len(list) != 20 && total != 15 {
-			t.Errorf("list 长度应取 min(total,20)=15, got %d (total=%d)", len(list), total)
+		if len(list) != 15 || total != 15 {
+			t.Errorf("list 长度应取 min(total,100)=15, got %d (total=%d)", len(list), total)
 		}
 	})
 
