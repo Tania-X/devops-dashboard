@@ -73,3 +73,9 @@ body,
   color: var(--text-primary);
   background: linear-gradient(90deg, rgba(var(--accent-primary-rgb), 0.18), rgba(var(--accent-primary-rgb), 0.05));
 }
+
+/* ===== Stat Panel 卡片（spec 7 动画规范：hover 轻微上浮 + 阴影加深，200ms）===== */
+.stat-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
