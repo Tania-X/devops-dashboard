@@ -49,6 +49,8 @@ export const colors = {
   role: {
     /** 管理员 —— 最高权限，紫色（与原 roleColorMap admin 一致） */
     admin: '#534ab7',
+    /** admin 色 RGB 分量（供 rgba() 半透明背景使用） */
+    adminRgb: '83, 74, 183',
     /** 锁定角色标记（内置角色不可编辑的锁图标） */
     locked: '#d89614',
   },

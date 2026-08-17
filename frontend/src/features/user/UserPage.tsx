@@ -151,7 +151,7 @@ export default function UserPage() {
       render: (role: string) =>
         role === 'admin' ? (
           // admin 用专用角色色（紫），避免 critical 红的错误语义暗示
-          <StatusTag level="unknown" label={roleLabelMap[role] || role} color={colors.role.admin} bg="rgba(83, 74, 183, 0.2)" />
+          <StatusTag level="unknown" label={roleLabelMap[role] || role} color={colors.role.admin} bg={`rgba(${colors.role.adminRgb}, 0.2)`} />
         ) : (
           <StatusTag level={roleLevelMap[role] || 'unknown'} label={roleLabelMap[role] || role} />
         ),
