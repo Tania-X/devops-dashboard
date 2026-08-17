@@ -103,8 +103,8 @@ export default function StatPanel({ config }: StatPanelProps) {
         border: 'none',
         borderRadius: radius.panel,
         height: 120,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        // boxShadow / transition 在 index.css 的 .stat-panel 类中定义，
+        // 避免内联样式优先级覆盖 hover 规则（AI review round 1）
       }}
       styles={{ body: { padding: spacing.panel } }}
     >
