@@ -4,6 +4,7 @@ import { SaveOutlined, ReloadOutlined, LockOutlined, PlusOutlined, EditOutlined,
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { RoleInfo, PermissionGroup, CreateRoleRequest } from '../../api/model';
 import { permissionLabel } from './permissionLabels';
+import { colors, radius } from '../../theme/tokens';
 
 const api = getDevOpsDashboardAPI(); // 模块级单例
 
@@ -183,8 +184,8 @@ export default function RolePermissions() {
 
   return (
     <Card
-      title={<span style={{ color: '#fff', fontSize: 16 }}>角色权限配置</span>}
-      style={{ background: '#1f1f1f', border: '1px solid #333', maxWidth: 860 }}
+      title={<span style={{ color: colors.text.primary, fontSize: 16 }}>角色权限配置</span>}
+      style={{ background: colors.bg.panel, border: `1px solid ${colors.border}`, borderRadius: radius.panel, maxWidth: 860 }}
       loading={loading}
       extra={
         <Button icon={<ReloadOutlined />} onClick={load} size="small">
@@ -194,7 +195,7 @@ export default function RolePermissions() {
     >
       {/* 角色选择 */}
       <Space style={{ marginBottom: 16 }}>
-        <span style={{ color: '#bbb' }}>角色</span>
+        <span style={{ color: colors.text.secondary }}>角色</span>
         <Select
           value={selectedRole}
           style={{ width: 160 }}
@@ -204,7 +205,7 @@ export default function RolePermissions() {
             label: (
               <Space size={6}>
                 {r.label}
-                <span style={{ color: '#888', fontSize: 12 }}>({r.name})</span>
+                <span style={{ color: colors.text.muted, fontSize: 12 }}>({r.name})</span>
                 {r.locked && <LockOutlined style={{ color: '#d89614' }} />}
               </Space>
             ),
@@ -287,7 +288,7 @@ export default function RolePermissions() {
           type="info"
           showIcon
           message="勾选保存后立即生效，无需重新登录。被移除权限的角色，其用户访问相应接口将返回 403。"
-          style={{ marginBottom: 16, background: '#1a1a2a', border: '1px solid #333' }}
+          style={{ marginBottom: 16, background: colors.bg.header, border: `1px solid ${colors.border}` }}
         />
       )}
 
@@ -304,10 +305,10 @@ export default function RolePermissions() {
               <div
                 key={group.obj}
                 style={{
-                  border: '1px solid #333',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: 6,
                   padding: '10px 14px',
-                  background: '#1a1a22',
+                  background: colors.bg.header,
                   opacity: locked ? 0.6 : 1,
                 }}
               >
@@ -318,7 +319,7 @@ export default function RolePermissions() {
                     disabled={locked}
                     onChange={() => toggleGroup(group)}
                   >
-                    <span style={{ color: '#fff', fontWeight: 600 }}>{group.label}</span>
+                    <span style={{ color: colors.text.primary, fontWeight: 600 }}>{group.label}</span>
                   </Checkbox>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -328,10 +329,10 @@ export default function RolePermissions() {
                       checked={checkedPerms.has(perm)}
                       disabled={locked}
                       onChange={() => togglePerm(perm, group)}
-                      style={{ marginRight: 12, color: '#ccc' }}
+                      style={{ marginRight: 12, color: colors.text.secondary }}
                     >
                       {permissionLabel(perm)}
-                      <span style={{ color: '#666', fontSize: 12, marginLeft: 4 }}>({perm})</span>
+                      <span style={{ color: colors.text.muted, fontSize: 12, marginLeft: 4 }}>({perm})</span>
                     </Checkbox>
                   ))}
                 </div>

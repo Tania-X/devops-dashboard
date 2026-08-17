@@ -3,6 +3,7 @@ import { Card, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { AuditLog } from '../../api/model';
+import { colors, radius } from '../../theme/tokens';
 
 const api = getDevOpsDashboardAPI(); // 模块级单例
 
@@ -78,14 +79,14 @@ export default function AuditLogs() {
       title: '详情',
       dataIndex: 'detail',
       ellipsis: true,
-      render: (v: string) => <span style={{ color: '#bbb', fontSize: 12 }}>{v}</span>,
+      render: (v: string) => <span style={{ color: colors.text.secondary, fontSize: 12 }}>{v}</span>,
     },
   ];
 
   return (
     <Card
-      title={<span style={{ color: '#fff', fontSize: 16 }}>审计日志</span>}
-      style={{ background: '#1f1f1f', border: '1px solid #333', maxWidth: 860 }}
+      title={<span style={{ color: colors.text.primary, fontSize: 16 }}>审计日志</span>}
+      style={{ background: colors.bg.panel, border: `1px solid ${colors.border}`, borderRadius: radius.panel, maxWidth: 860 }}
     >
       <Table<AuditLog>
         rowKey="id"

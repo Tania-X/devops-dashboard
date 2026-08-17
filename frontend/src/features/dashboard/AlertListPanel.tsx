@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Card, Spin, Tag, List } from 'antd';
+import { Card, Spin, List } from 'antd';
 import type { AlertListPanelConfig } from './dashboard-config';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { AlertItem } from '../../api/model';
+import StatusTag from '../../components/StatusTag';
+import { colors, fonts, radius } from '../../theme/tokens';
 
 interface AlertListPanelProps {
   config: AlertListPanelConfig;
 }
 
-const levelColorMap: Record<string, string> = {
-  info: '#3274d9',
-  warning: '#f2c94c',
-  critical: '#e02f44',
+/** 告警级别 → 语义状态（颜色统一走 StatusTag / tokens） */
+const levelMap: Record<string, 'info' | 'warning' | 'critical' | 'unknown'> = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'critical',
 };
 
 export default function AlertListPanel({ config }: AlertListPanelProps) {
@@ -30,15 +33,15 @@ export default function AlertListPanel({ config }: AlertListPanelProps) {
     <Card
       title={config.title}
       style={{
-        background: '#1f1f1f',
+        background: colors.bg.panel,
         border: 'none',
-        borderRadius: 4,
+        borderRadius: radius.panel,
       }}
       headStyle={{
-        color: '#ffffff',
-        borderBottom: '1px solid #333333',
-        fontSize: 16,
-        fontWeight: 500,
+        color: colors.text.primary,
+        borderBottom: `1px solid ${colors.border}`,
+        fontSize: fonts.size.h2,
+        fontWeight: fonts.weight.h2,
       }}
     >
       {loading ? (
@@ -51,25 +54,19 @@ export default function AlertListPanel({ config }: AlertListPanelProps) {
           renderItem={(item) => (
             <List.Item
               style={{
-                borderBottom: '1px solid #333333',
+                borderBottom: `1px solid ${colors.border}`,
                 padding: '12px 0',
               }}
             >
               <div style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Tag
-                    color={levelColorMap[item.level] || '#aaaaaa'}
-                    style={{
-                      background: `${levelColorMap[item.level] || '#aaaaaa'}33`,
-                      border: 'none',
-                    }}
-                  >
-                    {item.level.toUpperCase()}
-                  </Tag>
-                  <span style={{ color: '#666666', fontSize: 12 }}>{item.time}</span>
+                  <StatusTag level={levelMap[item.level] || 'unknown'} />
+                  <span style={{ color: colors.text.muted, fontSize: fonts.size.caption }}>{item.time}</span>
                 </div>
-                <div style={{ color: '#ffffff', fontSize: 14 }}>{item.message}</div>
-                <div style={{ color: '#aaaaaa', fontSize: 12, marginTop: 4 }}>来源: {item.source}</div>
+                <div style={{ color: colors.text.primary, fontSize: fonts.size.body }}>{item.message}</div>
+                <div style={{ color: colors.text.secondary, fontSize: fonts.size.caption, marginTop: 4 }}>
+                  来源: {item.source}
+                </div>
               </div>
             </List.Item>
           )}

@@ -4,6 +4,7 @@ import { SaveOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { AlertThreshold, AlertThresholdMetric } from '../../api/model';
 import { usePermission } from '../../hooks/usePermission';
+import { colors, fonts, radius } from '../../theme/tokens';
 
 const { Text } = Typography;
 
@@ -75,36 +76,36 @@ export default function AlertThresholdsTab() {
 
   return (
     <Card
-      title={<span style={{ color: '#fff', fontSize: 16 }}>告警阈值设置</span>}
-      style={{ background: '#1f1f1f', border: '1px solid #333', maxWidth: 720 }}
+      title={<span style={{ color: colors.text.primary, fontSize: 16 }}>告警阈值设置</span>}
+      style={{ background: colors.bg.panel, border: `1px solid ${colors.border}`, borderRadius: radius.panel, maxWidth: 720 }}
       loading={loading}
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         {data.map((t) => (
           <Space key={t.metric} size={12} align="center" style={{ justifyContent: 'space-between', width: '100%' }}>
-            <Text style={{ color: '#fff', width: 110, display: 'inline-block' }}>
+            <Text style={{ color: colors.text.primary, width: 110, display: 'inline-block' }}>
               {METRIC_LABELS[t.metric]}
             </Text>
-            <Text style={{ color: '#888' }}>warning(黄) 超过</Text>
+            <Text style={{ color: colors.text.muted }}>warning(黄) 超过</Text>
             <InputNumber
               min={1}
               max={100}
               value={t.warnThreshold}
               disabled={!canManage}
               onChange={(v) => updateField(t.metric, 'warnThreshold', v)}
-              style={{ width: 90, background: '#111217', color: '#fff' }}
+              style={{ width: 90, background: colors.bg.header, color: colors.text.primary }}
             />
-            <Text style={{ color: '#888' }}>%</Text>
-            <Text style={{ color: '#888' }}>critical(红) 超过</Text>
+            <Text style={{ color: colors.text.muted }}>%</Text>
+            <Text style={{ color: colors.text.muted }}>critical(红) 超过</Text>
             <InputNumber
               min={1}
               max={100}
               value={t.critThreshold}
               disabled={!canManage}
               onChange={(v) => updateField(t.metric, 'critThreshold', v)}
-              style={{ width: 90, background: '#111217', color: '#fff' }}
+              style={{ width: 90, background: colors.bg.header, color: colors.text.primary }}
             />
-            <Text style={{ color: '#888' }}>%</Text>
+            <Text style={{ color: colors.text.muted }}>%</Text>
             {canManage && (
               <Button
                 type="primary"
@@ -118,7 +119,7 @@ export default function AlertThresholdsTab() {
             )}
           </Space>
         ))}
-        <Text style={{ color: '#666', fontSize: 12 }}>
+        <Text style={{ color: colors.text.muted, fontSize: fonts.size.caption }}>
           保存后立即生效，无需重启。告警产生时（使用率超阈值）会推送到「告警通知」配置的 Webhook。
         </Text>
       </Space>

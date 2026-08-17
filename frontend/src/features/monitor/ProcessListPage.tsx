@@ -1,42 +1,64 @@
 import { useEffect, useRef, useState } from 'react';
-import { Table, Tag, Drawer, Select, Space, Card, Descriptions, Spin, Input, Progress, Row, Col } from 'antd';
-import type { ProcessItem, ProcessDetail } from '../../api/model';
+import {
+  Table,
+  Drawer,
+  Select,
+  Space,
+  Card,
+  Descriptions,
+  Spin,
+  Row,
+  Col,
+  Progress,
+  Input,
+} from 'antd';
+import type { ProcessDetail, ProcessItem } from '../../api/model';
 import { getDevOpsDashboardAPI } from '../../api/client';
+import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
+import PageHeader from '../../components/PageHeader';
+import { colors, fonts, radius, spacing } from '../../theme/tokens';
 
-const statusColorMap: Record<string, { color: string; bg: string; label: string }> = {
-  running: { color: '#73bf69', bg: 'rgba(115, 191, 105, 0.2)', label: '运行中' },
-  sleep: { color: '#73bf69', bg: 'rgba(115, 191, 105, 0.1)', label: '睡眠' },
-  idle: { color: '#aaaaaa', bg: 'rgba(170, 170, 170, 0.2)', label: '空闲' },
-  stop: { color: '#e02f44', bg: 'rgba(224, 47, 68, 0.2)', label: '已停止' },
-  zombie: { color: '#f2c94c', bg: 'rgba(242, 201, 76, 0.2)', label: '僵尸' },
-  disk: { color: '#f2c94c', bg: 'rgba(242, 201, 76, 0.2)', label: '磁盘等待' },
+const statusLevelMap: Record<string, SemanticLevel> = {
+  running: 'success',
+  sleep: 'info',
+  idle: 'unknown',
+  stop: 'critical',
+  zombie: 'warning',
+  disk: 'warning',
+};
+
+const statusLabelMap: Record<string, string> = {
+  running: '运行中',
+  sleep: '睡眠',
+  idle: '空闲',
+  stop: '已停止',
+  zombie: '僵尸',
+  disk: '磁盘等待',
 };
 
 function ProcessStatusTag({ status }: { status: string }) {
   const key = status.toLowerCase();
-  const cfg = statusColorMap[key] || { color: '#aaaaaa', bg: 'rgba(170, 170, 170, 0.2)', label: status };
   return (
-    <Tag
-      style={{
-        background: cfg.bg,
-        color: cfg.color,
-        border: 'none',
-        borderRadius: 4,
-        fontSize: 12,
-        padding: '2px 8px',
-      }}
-    >
-      {cfg.label}
-    </Tag>
+    <StatusTag
+      level={statusLevelMap[key] || 'unknown'}
+      label={statusLabelMap[key] || status}
+    />
   );
+}
+
+/** 阈值 → 状态色（spec 2.4） */
+function thresholdColor(v: number, warn: number, crit: number): string {
+  if (v > crit) return colors.status.critical;
+  if (v > warn) return colors.status.warning;
+  return colors.status.success;
 }
 
 export default function ProcessListPage() {
   const [data, setData] = useState<ProcessItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [sortBy, setSortBy] = useState<string>('cpu');
-  const [order, setOrder] = useState<string>('desc');
+  const [sortBy, setSortBy] = useState('cpu');
+  const [order, setOrder] = useState('desc');
   const [limit, setLimit] = useState<number>(200);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -49,7 +71,6 @@ export default function ProcessListPage() {
     getDevOpsDashboardAPI()
       .getProcessList({ sortBy: sortBy as any, order: order as any, keyword: keyword || undefined, limit })
       .then((res) => {
-        console.log('[ProcessList] 收到数据:', res.data?.length, '条');
         setData(res.data);
       })
       .catch((err) => {
@@ -94,9 +115,7 @@ export default function ProcessListPage() {
       key: 'index',
       width: 60,
       render: (_: unknown, __: unknown, index: number) => (
-        <span style={{ color: '#666666', fontFamily: '"Roboto Mono", monospace' }}>
-          {index + 1}
-        </span>
+        <span style={{ color: colors.text.muted, fontFamily: fonts.mono }}>{index + 1}</span>
       ),
     },
     {
@@ -105,14 +124,14 @@ export default function ProcessListPage() {
       key: 'pid',
       width: 80,
       render: (v: number) => (
-        <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>{v}</span>
+        <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>{v}</span>
       ),
     },
     {
       title: '进程名',
       dataIndex: 'name',
       key: 'name',
-      render: (text: string) => <span style={{ color: '#ffffff', fontWeight: 500 }}>{text}</span>,
+      render: (text: string) => <span style={{ color: colors.text.primary, fontWeight: 500 }}>{text}</span>,
     },
     {
       title: 'CPU %',
@@ -120,20 +139,18 @@ export default function ProcessListPage() {
       key: 'cpuPercent',
       width: 120,
       render: (v: number) => {
-        const color = v > 50 ? '#e02f44' : v > 20 ? '#f2c94c' : '#73bf69';
+        const color = thresholdColor(v, 20, 50);
         return (
           <Space>
             <Progress
               percent={Math.min(v, 100)}
               size="small"
               strokeColor={color}
-              railColor="#333333"
+              railColor={colors.border}
               showInfo={false}
               style={{ width: 60 }}
             />
-            <span style={{ color, fontFamily: '"Roboto Mono", monospace', fontSize: 12 }}>
-              {v.toFixed(1)}
-            </span>
+            <span style={{ color, fontFamily: fonts.mono, fontSize: 12 }}>{v.toFixed(1)}</span>
           </Space>
         );
       },
@@ -144,20 +161,18 @@ export default function ProcessListPage() {
       key: 'memoryPercent',
       width: 120,
       render: (v: number) => {
-        const color = v > 30 ? '#e02f44' : v > 10 ? '#f2c94c' : '#73bf69';
+        const color = thresholdColor(v, 10, 30);
         return (
           <Space>
             <Progress
               percent={Math.min(v, 100)}
               size="small"
               strokeColor={color}
-              railColor="#333333"
+              railColor={colors.border}
               showInfo={false}
               style={{ width: 60 }}
             />
-            <span style={{ color, fontFamily: '"Roboto Mono", monospace', fontSize: 12 }}>
-              {v.toFixed(1)}
-            </span>
+            <span style={{ color, fontFamily: fonts.mono, fontSize: 12 }}>{v.toFixed(1)}</span>
           </Space>
         );
       },
@@ -168,7 +183,7 @@ export default function ProcessListPage() {
       key: 'memoryMb',
       width: 110,
       render: (v: number) => (
-        <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace', fontSize: 12 }}>
+        <span style={{ color: colors.text.secondary, fontFamily: fonts.mono, fontSize: 12 }}>
           {v.toFixed(1)}
         </span>
       ),
@@ -184,17 +199,15 @@ export default function ProcessListPage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-        进程列表
-      </h1>
+      <PageHeader title="进程列表" />
 
       <Card
         style={{
-          background: '#1f1f1f',
+          background: colors.bg.panel,
           border: 'none',
-          borderRadius: 4,
+          borderRadius: radius.panel,
         }}
-        styles={{ body: { padding: 16 } }}
+        styles={{ body: { padding: spacing.panel } }}
       >
         <Space style={{ marginBottom: 16 }} wrap>
           <Input.Search
@@ -205,7 +218,7 @@ export default function ProcessListPage() {
             allowClear
             style={{ width: 200 }}
           />
-          <span style={{ color: '#aaaaaa' }}>排序：</span>
+          <span style={{ color: colors.text.secondary }}>排序：</span>
           <Select
             value={sortBy}
             onChange={(v) => setSortBy(v)}
@@ -226,7 +239,7 @@ export default function ProcessListPage() {
               { value: 'asc', label: '升序' },
             ]}
           />
-          <span style={{ color: '#aaaaaa' }}>最多显示：</span>
+          <span style={{ color: colors.text.secondary }}>最多显示：</span>
           <Select
             value={limit}
             onChange={(v) => setLimit(v)}
@@ -265,7 +278,7 @@ export default function ProcessListPage() {
 
       <Drawer
         title={
-          <span style={{ color: '#ffffff' }}>
+          <span style={{ color: colors.text.primary }}>
             {selectedProcess?.name || '进程详情'} (PID: {selectedProcess?.pid})
           </span>
         }
@@ -273,8 +286,8 @@ export default function ProcessListPage() {
         onClose={() => setDrawerVisible(false)}
         size="large"
         styles={{
-          body: { background: '#141414', padding: 24 },
-          header: { background: '#1f1f1f', borderBottom: '1px solid #333333' },
+          body: { background: colors.bg.page, padding: 24 },
+          header: { background: colors.bg.panel, borderBottom: `1px solid ${colors.border}` },
           mask: { background: 'rgba(0,0,0,0.6)' },
         }}
       >
@@ -285,12 +298,12 @@ export default function ProcessListPage() {
         ) : selectedProcess ? (
           <div>
             <Descriptions
-              title={<span style={{ color: '#ffffff', fontSize: 16, fontWeight: 500 }}>基本信息</span>}
+              title={<span style={{ color: colors.text.primary, fontSize: fonts.size.h2, fontWeight: fonts.weight.h2 }}>基本信息</span>}
               column={2}
               styles={{
-              label: { color: '#aaaaaa' },
-              content: { color: '#ffffff' },
-            }}
+                label: { color: colors.text.secondary },
+                content: { color: colors.text.primary },
+              }}
               items={[
                 { key: '1', label: '进程名', children: selectedProcess.name },
                 { key: '2', label: 'PID', children: selectedProcess.pid },
@@ -306,12 +319,12 @@ export default function ProcessListPage() {
 
             <h3
               style={{
-                color: '#ffffff',
-                fontSize: 16,
-                fontWeight: 500,
+                color: colors.text.primary,
+                fontSize: fonts.size.h2,
+                fontWeight: fonts.weight.h2,
                 marginTop: 32,
                 marginBottom: 16,
-                borderBottom: '1px solid #333333',
+                borderBottom: `1px solid ${colors.border}`,
                 paddingBottom: 8,
               }}
             >
@@ -319,34 +332,40 @@ export default function ProcessListPage() {
             </h3>
             <Row gutter={24} style={{ marginBottom: 16 }}>
               <Col span={8}>
-                <div style={{ color: '#aaaaaa', fontSize: 12, marginBottom: 4 }}>CPU 使用率</div>
+                <div style={{ color: colors.text.secondary, fontSize: fonts.size.caption, marginBottom: 4 }}>
+                  CPU 使用率
+                </div>
                 <Space>
                   <Progress
                     type="circle"
                     percent={Math.min(Math.round(selectedProcess.cpuPercent * 10) / 10, 100)}
                     size={60}
-                    strokeColor={selectedProcess.cpuPercent > 50 ? '#e02f44' : '#177ddc'}
-                    railColor="#333333"
+                    strokeColor={selectedProcess.cpuPercent > 50 ? colors.status.critical : colors.brand.primary}
+                    railColor={colors.border}
                     format={(pct) => `${pct?.toFixed(1)}%`}
                   />
                 </Space>
               </Col>
               <Col span={8}>
-                <div style={{ color: '#aaaaaa', fontSize: 12, marginBottom: 4 }}>内存使用率</div>
+                <div style={{ color: colors.text.secondary, fontSize: fonts.size.caption, marginBottom: 4 }}>
+                  内存使用率
+                </div>
                 <Space>
                   <Progress
                     type="circle"
                     percent={Math.min(Math.round(selectedProcess.memoryPercent * 10) / 10, 100)}
                     size={60}
-                    strokeColor={selectedProcess.memoryPercent > 30 ? '#f2c94c' : '#73bf69'}
-                    railColor="#333333"
+                    strokeColor={selectedProcess.memoryPercent > 30 ? colors.status.warning : colors.status.success}
+                    railColor={colors.border}
                     format={(pct) => `${pct?.toFixed(1)}%`}
                   />
                 </Space>
               </Col>
               <Col span={8}>
-                <div style={{ color: '#aaaaaa', fontSize: 12, marginBottom: 4 }}>内存占用</div>
-                <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace', fontSize: 16 }}>
+                <div style={{ color: colors.text.secondary, fontSize: fonts.size.caption, marginBottom: 4 }}>
+                  内存占用
+                </div>
+                <span style={{ color: colors.text.primary, fontFamily: fonts.mono, fontSize: fonts.size.h2 }}>
                   {selectedProcess.memoryMb.toFixed(1)} MB
                 </span>
               </Col>
@@ -356,12 +375,12 @@ export default function ProcessListPage() {
               <>
                 <h3
                   style={{
-                    color: '#ffffff',
-                    fontSize: 16,
-                    fontWeight: 500,
+                    color: colors.text.primary,
+                    fontSize: fonts.size.h2,
+                    fontWeight: fonts.weight.h2,
                     marginTop: 32,
                     marginBottom: 16,
-                    borderBottom: '1px solid #333333',
+                    borderBottom: `1px solid ${colors.border}`,
                     paddingBottom: 8,
                   }}
                 >
@@ -369,13 +388,13 @@ export default function ProcessListPage() {
                 </h3>
                 <div
                   style={{
-                    background: '#1a1a1a',
-                    border: '1px solid #333333',
-                    borderRadius: 4,
+                    background: colors.codeBg,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: radius.panel,
                     padding: 12,
-                    fontFamily: '"Roboto Mono", monospace',
-                    fontSize: 12,
-                    color: '#cccccc',
+                    fontFamily: fonts.mono,
+                    fontSize: fonts.size.caption,
+                    color: colors.codeText,
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
                     maxHeight: 200,
@@ -391,24 +410,18 @@ export default function ProcessListPage() {
               <>
                 <h3
                   style={{
-                    color: '#ffffff',
-                    fontSize: 16,
-                    fontWeight: 500,
+                    color: colors.text.primary,
+                    fontSize: fonts.size.h2,
+                    fontWeight: fonts.weight.h2,
                     marginTop: 32,
                     marginBottom: 16,
-                    borderBottom: '1px solid #333333',
+                    borderBottom: `1px solid ${colors.border}`,
                     paddingBottom: 8,
                   }}
                 >
                   工作目录
                 </h3>
-                <div
-                  style={{
-                    color: '#cccccc',
-                    fontFamily: '"Roboto Mono", monospace',
-                    fontSize: 12,
-                  }}
-                >
+                <div style={{ color: colors.codeText, fontFamily: fonts.mono, fontSize: fonts.size.caption }}>
                   {selectedProcess.workingDir}
                 </div>
               </>
@@ -418,12 +431,12 @@ export default function ProcessListPage() {
               <>
                 <h3
                   style={{
-                    color: '#ffffff',
-                    fontSize: 16,
-                    fontWeight: 500,
+                    color: colors.text.primary,
+                    fontSize: fonts.size.h2,
+                    fontWeight: fonts.weight.h2,
                     marginTop: 32,
                     marginBottom: 16,
-                    borderBottom: '1px solid #333333',
+                    borderBottom: `1px solid ${colors.border}`,
                     paddingBottom: 8,
                   }}
                 >
@@ -431,13 +444,13 @@ export default function ProcessListPage() {
                 </h3>
                 <div
                   style={{
-                    background: '#1a1a1a',
-                    border: '1px solid #333333',
-                    borderRadius: 4,
+                    background: colors.codeBg,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: radius.panel,
                     padding: 12,
-                    fontFamily: '"Roboto Mono", monospace',
+                    fontFamily: fonts.mono,
                     fontSize: 11,
-                    color: '#888888',
+                    color: colors.text.muted,
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
                     maxHeight: 300,

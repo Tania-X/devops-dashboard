@@ -1,4 +1,33 @@
-/* DevOps Dashboard 全局样式 */
+/* DevOps Dashboard 全局样式 —— 颜色一律引用 Design Token（src/theme/tokens.ts） */
+
+:root {
+  /* 背景色（spec 2.1）—— 与 tokens.ts 保持一致 */
+  --bg-page: #141414;
+  --bg-panel: #1f1f1f;
+  --bg-panel-hover: #2a2a2a;
+  --bg-header: #111217;
+  --bg-sidebar: #000000;
+
+  /* 文本色（spec 2.2） */
+  --text-primary: #ffffff;
+  --text-secondary: #aaaaaa;
+  --text-muted: #666666;
+
+  /* 品牌色（spec 2.3） */
+  --accent-primary: #177ddc;
+  --accent-primary-hover: #3c9ae8;
+
+  /* 状态色（spec 2.4） */
+  --status-success: #73bf69;
+  --status-warning: #f2c94c;
+  --status-critical: #e02f44;
+  --status-info: #3274d9;
+  --status-unknown: #aaaaaa;
+
+  /* 边框 */
+  --border: #333333;
+  --border-light: #555555;
+}
 
 html,
 body,
@@ -6,8 +35,8 @@ body,
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #141414;
-  color: #ffffff;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
   font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -15,7 +44,7 @@ body,
 
 /* 等宽数字字体（用于 IP、版本号、数值） */
 .font-mono {
-  font-family: "Roboto Mono", monospace;
+  font-family: "Roboto Mono", "Consolas", "Courier New", monospace;
 }
 
 /* 滚动条样式（深色主题） */
@@ -25,20 +54,47 @@ body,
 }
 
 ::-webkit-scrollbar-track {
-  background: #141414;
+  background: var(--bg-page);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333333;
+  background: var(--bg-panel-hover);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555555;
+  background: var(--border-light);
 }
 
 /* 选中文本颜色 */
 ::selection {
-  background: #177ddc;
-  color: #ffffff;
+  background: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+/* ===== 侧边栏菜单（spec 6.2）===== */
+.app-menu.ant-menu-dark {
+  background: var(--bg-sidebar);
+}
+
+/* 菜单项：默认文字次要色，悬停/激活变白 */
+.app-menu.ant-menu-dark .ant-menu-item {
+  color: var(--text-secondary);
+}
+
+.app-menu.ant-menu-dark .ant-menu-item:hover {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+/* 激活项：左侧 3px 品牌色竖线指示器 + 轻微品牌色底 */
+.app-menu.ant-menu-dark .ant-menu-item-selected {
+  color: var(--text-primary);
+  background: linear-gradient(90deg, rgba(23, 125, 220, 0.18), rgba(23, 125, 220, 0.05));
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+.app-menu.ant-menu-dark .ant-menu-item-selected:hover {
+  color: var(--text-primary);
+  background: linear-gradient(90deg, rgba(23, 125, 220, 0.18), rgba(23, 125, 220, 0.05));
 }

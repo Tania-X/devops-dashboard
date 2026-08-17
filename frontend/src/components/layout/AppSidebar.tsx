@@ -12,6 +12,8 @@ import {
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import AppLogo from '../AppLogo';
+import { colors, layout, spacing } from '../../theme/tokens';
 
 const { Sider } = Layout;
 
@@ -83,26 +85,24 @@ export default function AppSidebar() {
 
   return (
     <Sider
-      width={200}
+      width={layout.sidebarWidth}
       style={{
-        background: '#000000',
+        background: colors.bg.sidebar,
         overflow: 'auto',
-        borderRight: '1px solid #333333',
+        borderRight: `1px solid ${colors.border}`,
       }}
     >
+      {/* 品牌区：Logo + 产品名 */}
       <div
         style={{
-          height: 56,
+          height: layout.headerHeight,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#ffffff',
-          fontSize: 18,
-          fontWeight: 600,
-          borderBottom: '1px solid #333333',
+          borderBottom: `1px solid ${colors.border}`,
         }}
       >
-        DevOps
+        <AppLogo size={26} />
       </div>
       <Menu
         mode="inline"
@@ -110,10 +110,12 @@ export default function AppSidebar() {
         items={visibleItems}
         onClick={({ key }) => navigate(key)}
         style={{
-          background: '#000000',
+          background: colors.bg.sidebar,
           borderRight: 'none',
+          paddingTop: spacing.gap / 2,
         }}
         theme="dark"
+        className="app-menu"
       />
     </Sider>
   );

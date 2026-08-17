@@ -1,9 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Table, Tag, Select, Space, Card, Input, DatePicker } from 'antd';
+import { Table, Select, Space, Card, Input, DatePicker } from 'antd';
 import type { LogItem } from '../../api/model';
 import { LogItemLevel } from '../../api/model';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import dayjs from 'dayjs';
+import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
+import PageHeader from '../../components/PageHeader';
+import { colors, fonts, radius, spacing } from '../../theme/tokens';
 
 const { RangePicker } = DatePicker;
 
@@ -12,29 +15,15 @@ const SERVICE_LIST = [
   'notification-service', 'auth-service', 'log-collector', 'monitor-agent',
 ];
 
-const levelColorMap: Record<string, { color: string; bg: string; label: string }> = {
-  INFO: { color: '#3274d9', bg: 'rgba(50, 116, 217, 0.2)', label: 'INFO' },
-  WARN: { color: '#f2c94c', bg: 'rgba(242, 201, 76, 0.2)', label: 'WARN' },
-  ERROR: { color: '#e02f44', bg: 'rgba(224, 47, 68, 0.2)', label: 'ERROR' },
+/** 日志级别 → 语义状态（颜色统一走 StatusTag / tokens） */
+const levelMap: Record<string, SemanticLevel> = {
+  INFO: 'info',
+  WARN: 'warning',
+  ERROR: 'critical',
 };
 
 function LevelTag({ level }: { level: string }) {
-  const cfg = levelColorMap[level] || levelColorMap.INFO;
-  return (
-    <Tag
-      style={{
-        background: cfg.bg,
-        color: cfg.color,
-        border: 'none',
-        borderRadius: 4,
-        fontSize: 12,
-        padding: '2px 8px',
-        fontFamily: '"Roboto Mono", monospace',
-      }}
-    >
-      {cfg.label}
-    </Tag>
-  );
+  return <StatusTag level={levelMap[level] || 'unknown'} label={level} />;
 }
 
 type LogItemExt = LogItem & {
@@ -124,7 +113,7 @@ export default function LogQueryPage() {
       key: 'time',
       width: 180,
       render: (text: string) => (
-        <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace' }}>{text}</span>
+        <span style={{ color: colors.text.secondary, fontFamily: fonts.mono }}>{text}</span>
       ),
     },
     {
@@ -140,7 +129,7 @@ export default function LogQueryPage() {
       key: 'service',
       width: 180,
       render: (text: string) => (
-        <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>{text}</span>
+        <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>{text}</span>
       ),
     },
     {
@@ -149,7 +138,7 @@ export default function LogQueryPage() {
       key: 'sourceHost',
       width: 140,
       render: (text: string) => (
-        <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace' }}>{text || '-'}</span>
+        <span style={{ color: colors.text.secondary, fontFamily: fonts.mono }}>{text || '-'}</span>
       ),
     },
     {
@@ -157,26 +146,24 @@ export default function LogQueryPage() {
       dataIndex: 'content',
       key: 'content',
       ellipsis: { showTitle: true },
-      render: (text: string) => <span style={{ color: '#cccccc' }}>{text}</span>,
+      render: (text: string) => <span style={{ color: colors.codeText }}>{text}</span>,
     },
   ];
 
   return (
     <div style={{ width: '100%' }}>
-      <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-        日志查询
-      </h1>
+      <PageHeader title="日志查询" />
 
       <Card
         style={{
-          background: '#1f1f1f',
+          background: colors.bg.panel,
           border: 'none',
-          borderRadius: 4,
+          borderRadius: radius.panel,
         }}
-        styles={{ body: { padding: 16 } }}
+        styles={{ body: { padding: spacing.panel } }}
       >
         <Space style={{ marginBottom: 16 }} wrap>
-          <span style={{ color: '#aaaaaa' }}>级别：</span>
+          <span style={{ color: colors.text.secondary }}>级别：</span>
           <Select
             allowClear
             placeholder="全部级别"
@@ -189,7 +176,7 @@ export default function LogQueryPage() {
               { value: LogItemLevel.ERROR, label: 'ERROR' },
             ]}
           />
-          <span style={{ color: '#aaaaaa' }}>服务：</span>
+          <span style={{ color: colors.text.secondary }}>服务：</span>
           <Select
             allowClear
             placeholder="全部服务"
@@ -228,28 +215,28 @@ export default function LogQueryPage() {
           size="middle"
           expandable={{
             expandedRowRender: (record: LogItemExt) => (
-              <div style={{ background: '#141414', padding: '12px 24px' }}>
+              <div style={{ background: colors.bg.page, padding: '12px 24px' }}>
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ color: '#aaaaaa' }}>来源主机：</span>
-                  <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>
+                  <span style={{ color: colors.text.secondary }}>来源主机：</span>
+                  <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>
                     {record.sourceHost || '-'}
                   </span>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ color: '#aaaaaa' }}>日志路径：</span>
-                  <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>
+                  <span style={{ color: colors.text.secondary }}>日志路径：</span>
+                  <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>
                     {record.logPath || '-'}
                   </span>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ color: '#aaaaaa' }}>Trace ID：</span>
-                  <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>
+                  <span style={{ color: colors.text.secondary }}>Trace ID：</span>
+                  <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>
                     {record.traceId || '-'}
                   </span>
                 </div>
                 <div>
-                  <span style={{ color: '#aaaaaa' }}>完整内容：</span>
-                  <span style={{ color: '#cccccc' }}>{record.content}</span>
+                  <span style={{ color: colors.text.secondary }}>完整内容：</span>
+                  <span style={{ color: colors.codeText }}>{record.content}</span>
                 </div>
               </div>
             ),

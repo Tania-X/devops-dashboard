@@ -12,6 +12,8 @@ import {
 } from '@ant-design/icons';
 import type { HostInfo } from '../../api/model';
 import { getDevOpsDashboardAPI } from '../../api/client';
+import PageHeader from '../../components/PageHeader';
+import { colors, fonts, radius } from '../../theme/tokens';
 
 function InfoCard({
   icon,
@@ -25,16 +27,16 @@ function InfoCard({
   return (
     <Card
       style={{
-        background: '#1f1f1f',
+        background: colors.bg.panel,
         border: 'none',
-        borderRadius: 4,
+        borderRadius: radius.panel,
         height: '100%',
       }}
       styles={{ body: { padding: 20 } }}
     >
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-        <span style={{ color: '#177ddc', fontSize: 20, marginRight: 10 }}>{icon}</span>
-        <span style={{ color: '#ffffff', fontSize: 15, fontWeight: 500 }}>{title}</span>
+        <span style={{ color: colors.brand.primary, fontSize: 20, marginRight: 10 }}>{icon}</span>
+        <span style={{ color: colors.text.primary, fontSize: 15, fontWeight: 500 }}>{title}</span>
       </div>
       {children}
     </Card>
@@ -65,9 +67,7 @@ export default function HostInfoPage() {
   if (loading) {
     return (
       <div style={{ width: '100%' }}>
-        <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-          主机信息
-        </h1>
+        <PageHeader title="主机信息" />
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
           <Spin />
         </div>
@@ -78,23 +78,20 @@ export default function HostInfoPage() {
   if (error || !hostInfo) {
     return (
       <div style={{ width: '100%' }}>
-        <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-          主机信息
-        </h1>
+        <PageHeader title="主机信息" />
         <Card
           style={{
-            background: '#1f1f1f',
+            background: colors.bg.panel,
             border: 'none',
-            borderRadius: 4,
+            borderRadius: radius.panel,
             textAlign: 'center',
             padding: 40,
           }}
         >
-          <div style={{ color: '#e02f44', fontSize: 16, marginBottom: 16 }}>获取主机信息失败</div>
-          <div
-            style={{ color: '#177ddc', cursor: 'pointer' }}
-            onClick={fetchInfo}
-          >
+          <div style={{ color: colors.status.critical, fontSize: fonts.size.h2, marginBottom: 16 }}>
+            获取主机信息失败
+          </div>
+          <div style={{ color: colors.brand.primary, cursor: 'pointer' }} onClick={fetchInfo}>
             点击重试
           </div>
         </Card>
@@ -104,9 +101,7 @@ export default function HostInfoPage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-        主机信息
-      </h1>
+      <PageHeader title="主机信息" />
 
       <Row gutter={[16, 16]}>
         <Col span={12}>
@@ -114,9 +109,9 @@ export default function HostInfoPage() {
             <Descriptions
               column={1}
               styles={{
-              label: { color: '#aaaaaa', paddingBottom: 8 },
-              content: { color: '#ffffff' },
-            }}
+                label: { color: colors.text.secondary, paddingBottom: 8 },
+                content: { color: colors.text.primary },
+              }}
               items={[
                 { key: '1', label: (
                   <span><TagOutlined style={{ marginRight: 4 }} />主机名</span>
@@ -143,9 +138,9 @@ export default function HostInfoPage() {
             <Descriptions
               column={1}
               styles={{
-              label: { color: '#aaaaaa', paddingBottom: 8 },
-              content: { color: '#ffffff' },
-            }}
+                label: { color: colors.text.secondary, paddingBottom: 8 },
+                content: { color: colors.text.primary },
+              }}
               items={[
                 { key: '1', label: (
                   <span><InfoCircleOutlined style={{ marginRight: 4 }} />CPU 型号</span>
@@ -169,9 +164,9 @@ export default function HostInfoPage() {
             <Descriptions
               column={1}
               styles={{
-              label: { color: '#aaaaaa', paddingBottom: 8 },
-              content: { color: '#ffffff' },
-            }}
+                label: { color: colors.text.secondary, paddingBottom: 8 },
+                content: { color: colors.text.primary },
+              }}
               items={[
                 { key: '1', label: (
                   <span><FieldTimeOutlined style={{ marginRight: 4 }} />运行时长</span>
