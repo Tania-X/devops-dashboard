@@ -4,6 +4,7 @@ import { Card, Spin } from 'antd';
 import type { StatPanelConfig } from './dashboard-config';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import * as icons from '@ant-design/icons';
+import { colors, fonts, radius, spacing } from '../../theme/tokens';
 
 interface StatPanelProps {
   config: StatPanelConfig;
@@ -19,10 +20,10 @@ function getValueByPath(obj: unknown, path: string): number | string | undefined
 }
 
 function getStatusColor(value: number, thresholds?: { warning: number; critical: number }): string {
-  if (!thresholds) return '#ffffff';
-  if (value >= thresholds.critical) return '#e02f44';
-  if (value >= thresholds.warning) return '#f2c94c';
-  return '#73bf69';
+  if (!thresholds) return colors.text.primary;
+  if (value >= thresholds.critical) return colors.status.critical;
+  if (value >= thresholds.warning) return colors.status.warning;
+  return colors.status.success;
 }
 
 export default function StatPanel({ config }: StatPanelProps) {
@@ -39,7 +40,6 @@ export default function StatPanel({ config }: StatPanelProps) {
         .then((res) => {
           if (cancelled) return;
           retryCount = 0;
-          console.log('[StatPanel]', config.title, 'raw res.data:', res.data);
           const raw = getValueByPath(res.data, config.dataKey);
           setValue(typeof raw === 'number' ? raw : Number(raw) || 0);
           if (!cancelled) setLoading(false);
@@ -68,32 +68,33 @@ export default function StatPanel({ config }: StatPanelProps) {
   const IconComponent = (icons as unknown as Record<string, React.ComponentType<any>>)[config.icon];
 
   const displayValue = value !== null ? `${value.toFixed(1)}${config.unit === 'percent' ? '%' : ''}` : '--';
-  const statusColor = value !== null ? getStatusColor(value, config.thresholds) : '#ffffff';
+  const statusColor = value !== null ? getStatusColor(value, config.thresholds) : colors.text.primary;
 
   return (
     <Card
       style={{
-        background: '#1f1f1f',
+        background: colors.bg.panel,
         border: 'none',
-        borderRadius: 4,
+        borderRadius: radius.panel,
         height: 120,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
       }}
-      styles={{ body: { padding: 16 } }}
+      styles={{ body: { padding: spacing.panel } }}
     >
       {loading ? (
         <Spin />
       ) : (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            {IconComponent && React.createElement(IconComponent, { style: { color: '#aaaaaa', fontSize: 14 } })}
-            <span style={{ color: '#aaaaaa', fontSize: 14 }}>{config.title}</span>
+            {IconComponent && React.createElement(IconComponent, { style: { color: colors.text.secondary, fontSize: 14 } })}
+            <span style={{ color: colors.text.secondary, fontSize: fonts.size.body }}>{config.title}</span>
           </div>
           <div
             style={{
-              fontSize: 32,
-              fontWeight: 700,
+              fontSize: fonts.size.number,
+              fontWeight: fonts.weight.number,
               color: statusColor,
-              fontFamily: '"Roboto Mono", monospace',
+              fontFamily: fonts.mono,
             }}
           >
             {displayValue}

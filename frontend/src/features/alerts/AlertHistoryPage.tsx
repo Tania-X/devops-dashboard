@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Select, Space } from 'antd';
+import { Table, Select, Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { Alert, GetAlertHistoryParams, GetAlertHistory200 } from '../../api/model';
 import { AlertLevel } from '../../api/model';
+import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
+import PageHeader from '../../components/PageHeader';
+import { colors } from '../../theme/tokens';
 
 const api = getDevOpsDashboardAPI(); // 模块级单例，避免每次渲染重建
 
-// 级别 → 颜色(与状态标签色值一致)
-const LEVEL_COLORS: Record<string, string> = {
-  info: '#73bf69',
-  warning: '#f2c94c',
-  critical: '#e02f44',
+// 级别 → 语义状态（颜色统一走 StatusTag / tokens）
+const LEVEL_MAP: Record<string, SemanticLevel> = {
+  info: 'success',
+  warning: 'warning',
+  critical: 'critical',
 };
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -55,9 +58,7 @@ export default function AlertHistoryPage() {
       dataIndex: 'level',
       width: 110,
       render: (lv: AlertLevel) => (
-        <Tag color={LEVEL_COLORS[lv]} style={{ color: '#111' }}>
-          {LEVEL_LABELS[lv] ?? lv}
-        </Tag>
+        <StatusTag level={LEVEL_MAP[lv] || 'unknown'} label={LEVEL_LABELS[lv] ?? lv} />
       ),
     },
     { title: '消息', dataIndex: 'message', ellipsis: true },
@@ -67,13 +68,13 @@ export default function AlertHistoryPage() {
   ];
 
   return (
-    <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
-      <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 12 }}>告警历史</h1>
+    <div style={{ width: '100%' }}>
+      <PageHeader title="告警历史" />
       <Space style={{ marginBottom: 16 }}>
         <Select
           allowClear
           placeholder="级别筛选"
-          style={{ width: 160, background: '#1f1f1f' }}
+          style={{ width: 160, background: colors.bg.panel }}
           value={level}
           onChange={(v) => {
             setLevel(v);
@@ -102,7 +103,7 @@ export default function AlertHistoryPage() {
             setPageSize(ps);
           },
         }}
-        style={{ background: '#1f1f1f' }}
+        style={{ background: colors.bg.panel }}
       />
     </div>
   );

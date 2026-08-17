@@ -1,15 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Card, message, Popconfirm } from 'antd';
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Space, Card, message, Popconfirm } from 'antd';
 import { PlusOutlined, ReloadOutlined, CloudUploadOutlined, StopOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { AgentTarget } from '../../api/model';
 import AuthButton from '../../components/AuthButton';
+import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
 import { usePermission } from '../../hooks/usePermission';
+import { colors, radius } from '../../theme/tokens';
 
-const statusColorMap: Record<string, string> = {
-  online: '#73bf69',
-  offline: '#e02f44',
-  unknown: '#aaaaaa',
+const statusLevelMap: Record<string, SemanticLevel> = {
+  online: 'success',
+  offline: 'critical',
+  unknown: 'unknown',
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -119,9 +121,7 @@ export default function AgentPage() {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={statusColorMap[status] || '#aaaaaa'}>
-          {statusLabelMap[status] || status}
-        </Tag>
+        <StatusTag level={statusLevelMap[status] || 'unknown'} label={statusLabelMap[status] || status} />
       ),
     },
     {
@@ -147,17 +147,17 @@ export default function AgentPage() {
   ];
 
   return (
-    <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
+    <div style={{ width: '100%' }}>
       <Card
-        title={<span style={{ color: '#fff', fontSize: 16 }}>Agent 分发目标</span>}
+        title={<span style={{ color: colors.text.primary, fontSize: 16 }}>Agent 分发目标</span>}
         extra={
           <Space>
             <Button icon={<ReloadOutlined />} onClick={() => fetchData()}>刷新</Button>
             <AuthButton perm="agent:create" type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增目标</AuthButton>
           </Space>
         }
-        style={{ background: '#1f1f1f', border: '1px solid #333' }}
-        styles={{ header: { borderBottom: '1px solid #333' }, body: { padding: 0 } }}
+        style={{ background: colors.bg.panel, border: `1px solid ${colors.border}`, borderRadius: radius.panel }}
+        styles={{ header: { borderBottom: `1px solid ${colors.border}` }, body: { padding: 0 } }}
       >
         <Table
           dataSource={data}
@@ -165,20 +165,20 @@ export default function AgentPage() {
           rowKey="id"
           loading={loading}
           pagination={{ pageSize: 10 }}
-          style={{ background: '#1f1f1f' }}
+          style={{ background: colors.bg.panel }}
         />
       </Card>
 
       <Modal
-        title={<span style={{ color: '#fff' }}>{editing ? '编辑目标' : '新增目标'}</span>}
+        title={<span style={{ color: colors.text.primary }}>{editing ? '编辑目标' : '新增目标'}</span>}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
         okText="确认"
         cancelText="取消"
         styles={{
-          body: { background: '#1f1f1f' },
-          header: { background: '#1f1f1f' },
+          body: { background: colors.bg.panel },
+          header: { background: colors.bg.panel },
         }}
       >
         <Form form={form} layout="vertical" autoComplete="off">

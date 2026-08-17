@@ -7,6 +7,7 @@ import RolePermissions from './RolePermissions';
 import AuditLogs from './AuditLogs';
 import AlertThresholdsTab from './AlertThresholdsTab';
 import { usePermission } from '../../hooks/usePermission';
+import { colors, radius } from '../../theme/tokens';
 
 const { Text } = Typography;
 
@@ -19,7 +20,7 @@ export default function SettingsPage() {
   const canManagePermissions = usePermission('settings:manage');
 
   return (
-    <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
+    <div style={{ width: '100%' }}>
       <Tabs
         destroyOnHidden
         items={[
@@ -32,7 +33,7 @@ export default function SettingsPage() {
               ]
             : []),
         ]}
-        style={{ color: '#fff' }}
+        style={{ color: colors.text.primary }}
       />
     </div>
   );
@@ -112,17 +113,17 @@ function WebhookSettingsTab() {
 
   return (
     <Card
-      title={<span style={{ color: '#fff', fontSize: 16 }}>告警通知设置</span>}
-      style={{ background: '#1f1f1f', border: '1px solid #333', maxWidth: 720 }}
+      title={<span style={{ color: colors.text.primary, fontSize: 16 }}>告警通知设置</span>}
+      style={{ background: colors.bg.panel, border: `1px solid ${colors.border}`, borderRadius: radius.panel, maxWidth: 720 }}
       loading={loading}
     >
         <Form
           form={form}
           layout="vertical"
           autoComplete="off"
-          style={{ color: '#fff' }}
+          style={{ color: colors.text.primary }}
         >
-          <Form.Item label={<Text style={{ color: '#fff' }}>启用推送通知</Text>} name="enabled">
+          <Form.Item label={<Text style={{ color: colors.text.primary }}>启用推送通知</Text>} name="enabled">
             <Switch
               checked={enabled}
               onChange={syncEnabled}
@@ -133,7 +134,7 @@ function WebhookSettingsTab() {
           </Form.Item>
 
           <Form.Item
-            label={<Text style={{ color: '#fff' }}>渠道类型</Text>}
+            label={<Text style={{ color: colors.text.primary }}>渠道类型</Text>}
             name="kind"
             rules={[{ required: true, message: '请选择渠道类型' }]}
           >
@@ -141,17 +142,17 @@ function WebhookSettingsTab() {
               onChange={(e) => form.setFieldValue('kind', e.target.value)}
               disabled={readOnly}
             >
-              <Radio value="wecom" style={{ color: '#fff' }}>
+              <Radio value="wecom" style={{ color: colors.text.primary }}>
                 企业微信 WeCom
               </Radio>
-              <Radio value="dingtalk" style={{ color: '#fff' }}>
+              <Radio value="dingtalk" style={{ color: colors.text.primary }}>
                 钉钉 DingTalk
               </Radio>
             </Radio.Group>
           </Form.Item>
 
           <Form.Item
-            label={<Text style={{ color: '#fff' }}>Webhook 地址</Text>}
+            label={<Text style={{ color: colors.text.primary }}>Webhook 地址</Text>}
             name="url"
             rules={[
               { required: true, message: '请输入 Webhook 地址' },
@@ -164,19 +165,19 @@ function WebhookSettingsTab() {
             <Input
               placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
               disabled={readOnly}
-              style={{ background: '#111217', color: '#fff' }}
+              style={{ background: colors.bg.control, color: colors.text.primary }}
             />
           </Form.Item>
 
           <Form.Item
-            label={<Text style={{ color: '#fff' }}>加签密钥（可选）</Text>}
+            label={<Text style={{ color: colors.text.primary }}>加签密钥（可选）</Text>}
             name="secret"
             tooltip="钉钉机器人安全设置中的加签密钥；企业微信机器人无需填写"
           >
             <Input.Password
               placeholder="仅钉钉渠道需要，留空表示不修改"
               disabled={readOnly}
-              style={{ background: '#111217', color: '#fff' }}
+              style={{ background: colors.bg.control, color: colors.text.primary }}
             />
           </Form.Item>
 
@@ -185,7 +186,7 @@ function WebhookSettingsTab() {
               type="info"
               showIcon
               message="保存后立即生效，无需重启服务。告警产生时（CPU/内存/磁盘超阈值）会自动推送到该地址。"
-              style={{ marginBottom: 24, background: '#1a1a2a', border: '1px solid #333' }}
+              style={{ marginBottom: 24, background: colors.bg.control, border: `1px solid ${colors.border}` }}
             />
           )}
 

@@ -1,15 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, message, Popconfirm } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Space, Card, message, Popconfirm } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import type { UserItem } from '../../api/model';
 import AuthButton from '../../components/AuthButton';
+import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
 import { usePermission } from '../../hooks/usePermission';
+import { colors, radius } from '../../theme/tokens';
 
-const roleColorMap: Record<string, string> = {
-  admin: '#534AB7',
-  operator: '#177ddc',
-  viewer: '#888780',
+/** 角色 → 语义状态（仅 operator/viewer 走状态色；admin 在渲染处用专用角色色） */
+const roleLevelMap: Record<string, SemanticLevel> = {
+  operator: 'info',
+  viewer: 'unknown',
 };
 
 const roleLabelMap: Record<string, string> = {
@@ -66,7 +68,7 @@ function UserFormModal({ open, editingUser, onClose, onSuccess }: UserFormModalP
 
   return (
     <Modal
-      title={<span style={{ color: '#fff' }}>{editingUser ? '编辑用户' : '新增用户'}</span>}
+      title={<span style={{ color: colors.text.primary }}>{editingUser ? '编辑用户' : '新增用户'}</span>}
       open={open}
       onOk={handleSubmit}
       onCancel={onClose}
@@ -74,8 +76,8 @@ function UserFormModal({ open, editingUser, onClose, onSuccess }: UserFormModalP
       okText="确认"
       cancelText="取消"
       styles={{
-        body: { background: '#1f1f1f' },
-        header: { background: '#1f1f1f' },
+        body: { background: colors.bg.panel },
+        header: { background: colors.bg.panel },
       }}
     >
       <Form form={form} layout="vertical" autoComplete="off" key={editingId || 'create'}>
@@ -146,11 +148,13 @@ export default function UserPage() {
       title: '角色',
       dataIndex: 'role',
       key: 'role',
-      render: (role: string) => (
-        <Tag color={roleColorMap[role] || '#888780'}>
-          {roleLabelMap[role] || role}
-        </Tag>
-      ),
+      render: (role: string) =>
+        role === 'admin' ? (
+          // admin 用专用角色色（紫），避免 critical 红的错误语义暗示
+          <StatusTag level="unknown" label={roleLabelMap[role] || role} color={colors.role.admin} bg={`rgba(${colors.role.adminRgb}, 0.2)`} />
+        ) : (
+          <StatusTag level={roleLevelMap[role] || 'unknown'} label={roleLabelMap[role] || role} />
+        ),
     },
     { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt' },
     {
@@ -170,17 +174,17 @@ export default function UserPage() {
   ];
 
   return (
-    <div style={{ padding: 24, background: '#111217', minHeight: '100%' }}>
+    <div style={{ width: '100%' }}>
       <Card
-        title={<span style={{ color: '#fff', fontSize: 16 }}>用户管理</span>}
+        title={<span style={{ color: colors.text.primary, fontSize: 16 }}>用户管理</span>}
         extra={
           <Space>
             <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
             <AuthButton perm="user:create" type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增用户</AuthButton>
           </Space>
         }
-        style={{ background: '#1f1f1f', border: '1px solid #333' }}
-        styles={{ header: { borderBottom: '1px solid #333' }, body: { padding: 0 } }}
+        style={{ background: colors.bg.panel, border: `1px solid ${colors.border}`, borderRadius: radius.panel }}
+        styles={{ header: { borderBottom: `1px solid ${colors.border}` }, body: { padding: 0 } }}
       >
         <Table
           dataSource={data}
@@ -188,7 +192,7 @@ export default function UserPage() {
           rowKey="id"
           loading={loading}
           pagination={{ pageSize: 10 }}
-          style={{ background: '#1f1f1f' }}
+          style={{ background: colors.bg.panel }}
         />
       </Card>
 

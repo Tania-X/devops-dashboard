@@ -1,56 +1,46 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Card, Spin } from 'antd';
+import { Table, Card, Spin } from 'antd';
 import type { DeploymentItem, DeploymentHistoryItem } from '../../api/model';
 import { getDevOpsDashboardAPI } from '../../api/client';
 import dayjs from 'dayjs';
+import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
+import PageHeader from '../../components/PageHeader';
+import { colors, fonts, radius, spacing } from '../../theme/tokens';
 
-const envColorMap: Record<string, { color: string; bg: string; label: string }> = {
-  dev: { color: '#3274d9', bg: 'rgba(50, 116, 217, 0.2)', label: '开发' },
-  test: { color: '#f2c94c', bg: 'rgba(242, 201, 76, 0.2)', label: '测试' },
-  prod: { color: '#e02f44', bg: 'rgba(224, 47, 68, 0.2)', label: '生产' },
+/** 环境 → 语义状态 */
+const envLevelMap: Record<string, SemanticLevel> = {
+  dev: 'info',
+  test: 'warning',
+  prod: 'critical',
 };
 
-const statusColorMap: Record<string, { color: string; bg: string; label: string }> = {
-  pending: { color: '#aaaaaa', bg: 'rgba(170, 170, 170, 0.2)', label: '等待中' },
-  deploying: { color: '#3274d9', bg: 'rgba(50, 116, 217, 0.2)', label: '部署中' },
-  success: { color: '#73bf69', bg: 'rgba(115, 191, 105, 0.2)', label: '成功' },
-  failed: { color: '#e02f44', bg: 'rgba(224, 47, 68, 0.2)', label: '失败' },
+const envLabelMap: Record<string, string> = {
+  dev: '开发',
+  test: '测试',
+  prod: '生产',
+};
+
+/** 部署状态 → 语义状态 */
+const statusLevelMap: Record<string, SemanticLevel> = {
+  pending: 'unknown',
+  deploying: 'info',
+  success: 'success',
+  failed: 'critical',
+};
+
+const statusLabelMap: Record<string, string> = {
+  pending: '等待中',
+  deploying: '部署中',
+  success: '成功',
+  failed: '失败',
 };
 
 function EnvTag({ env }: { env: string }) {
-  const cfg = envColorMap[env] || envColorMap.dev;
-  return (
-    <Tag
-      style={{
-        background: cfg.bg,
-        color: cfg.color,
-        border: 'none',
-        borderRadius: 4,
-        fontSize: 12,
-        padding: '2px 8px',
-      }}
-    >
-      {cfg.label}
-    </Tag>
-  );
+  return <StatusTag level={envLevelMap[env] || 'unknown'} label={envLabelMap[env] || env} />;
 }
 
-function StatusTag({ status }: { status: string }) {
-  const cfg = statusColorMap[status] || statusColorMap.pending;
-  return (
-    <Tag
-      style={{
-        background: cfg.bg,
-        color: cfg.color,
-        border: 'none',
-        borderRadius: 4,
-        fontSize: 12,
-        padding: '2px 8px',
-      }}
-    >
-      {cfg.label}
-    </Tag>
-  );
+function StatusTagView({ status }: { status: string }) {
+  return <StatusTag level={statusLevelMap[status] || 'unknown'} label={statusLabelMap[status] || status} />;
 }
 
 export default function DeploymentPage() {
@@ -88,7 +78,7 @@ export default function DeploymentPage() {
       dataIndex: 'appName',
       key: 'appName',
       render: (text: string) => (
-        <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace', fontWeight: 500 }}>{text}</span>
+        <span style={{ color: colors.text.primary, fontFamily: fonts.mono, fontWeight: 500 }}>{text}</span>
       ),
     },
     {
@@ -97,7 +87,7 @@ export default function DeploymentPage() {
       key: 'version',
       width: 120,
       render: (text: string) => (
-        <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace' }}>{text}</span>
+        <span style={{ color: colors.text.secondary, fontFamily: fonts.mono }}>{text}</span>
       ),
     },
     {
@@ -112,7 +102,7 @@ export default function DeploymentPage() {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: string) => <StatusTag status={status} />,
+      render: (status: string) => <StatusTagView status={status} />,
     },
     {
       title: '最后部署时间',
@@ -120,7 +110,7 @@ export default function DeploymentPage() {
       key: 'lastDeployedAt',
       width: 180,
       render: (text: string) => (
-        <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace' }}>{dayjs(text).format('YYYY-MM-DD HH:mm:ss')}</span>
+        <span style={{ color: colors.text.secondary, fontFamily: fonts.mono }}>{dayjs(text).format('YYYY-MM-DD HH:mm:ss')}</span>
       ),
     },
   ];
@@ -132,7 +122,7 @@ export default function DeploymentPage() {
       key: 'version',
       width: 120,
       render: (text: string) => (
-        <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>{text}</span>
+        <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>{text}</span>
       ),
     },
     {
@@ -140,7 +130,7 @@ export default function DeploymentPage() {
       dataIndex: 'operator',
       key: 'operator',
       width: 140,
-      render: (text: string) => <span style={{ color: '#cccccc' }}>{text}</span>,
+      render: (text: string) => <span style={{ color: colors.codeText }}>{text}</span>,
     },
     {
       title: '耗时',
@@ -148,7 +138,7 @@ export default function DeploymentPage() {
       key: 'durationSec',
       width: 100,
       render: (v: number) => (
-        <span style={{ color: '#aaaaaa' }}>{v >= 60 ? `${Math.floor(v / 60)}m${v % 60}s` : `${v}s`}</span>
+        <span style={{ color: colors.text.secondary }}>{v >= 60 ? `${Math.floor(v / 60)}m${v % 60}s` : `${v}s`}</span>
       ),
     },
     {
@@ -156,7 +146,7 @@ export default function DeploymentPage() {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: string) => <StatusTag status={status} />,
+      render: (status: string) => <StatusTagView status={status} />,
     },
     {
       title: '部署时间',
@@ -164,24 +154,22 @@ export default function DeploymentPage() {
       key: 'deployedAt',
       width: 180,
       render: (text: string) => (
-        <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace' }}>{dayjs(text).format('YYYY-MM-DD HH:mm:ss')}</span>
+        <span style={{ color: colors.text.secondary, fontFamily: fonts.mono }}>{dayjs(text).format('YYYY-MM-DD HH:mm:ss')}</span>
       ),
     },
   ];
 
   return (
     <div style={{ width: '100%' }}>
-      <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-        部署状态
-      </h1>
+      <PageHeader title="部署状态" />
 
       <Card
         style={{
-          background: '#1f1f1f',
+          background: colors.bg.panel,
           border: 'none',
-          borderRadius: 4,
+          borderRadius: radius.panel,
         }}
-        styles={{ body: { padding: 16 } }}
+        styles={{ body: { padding: spacing.panel } }}
       >
         <Table
           columns={columns as any}
@@ -198,11 +186,11 @@ export default function DeploymentPage() {
               const history = historyMap[record.id];
               const hLoading = historyLoading[record.id];
               return (
-                <div style={{ background: '#141414', padding: '12px 24px' }}>
+                <div style={{ background: colors.bg.page, padding: '12px 24px' }}>
                   <h4
                     style={{
-                      color: '#ffffff',
-                      fontSize: 14,
+                      color: colors.text.primary,
+                      fontSize: fonts.size.body,
                       fontWeight: 500,
                       marginBottom: 12,
                     }}

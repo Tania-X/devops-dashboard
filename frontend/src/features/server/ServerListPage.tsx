@@ -1,32 +1,23 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Drawer, Select, Space, Card, Descriptions, Spin, Row, Col, Progress } from 'antd';
+import { Table, Drawer, Select, Space, Card, Descriptions, Spin, Row, Col, Progress } from 'antd';
 import type { ServerItem, ServerDetail } from '../../api/model';
 import { ServerItemStatus } from '../../api/model';
 import { getDevOpsDashboardAPI } from '../../api/client';
+import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
+import PageHeader from '../../components/PageHeader';
+import { colors, fonts, radius, spacing } from '../../theme/tokens';
 
-const statusColorMap: Record<string, { color: string; bg: string; label: string }> = {
-  running: { color: '#73bf69', bg: 'rgba(115, 191, 105, 0.2)', label: '运行中' },
-  stopped: { color: '#aaaaaa', bg: 'rgba(170, 170, 170, 0.2)', label: '已停机' },
-  maintenance: { color: '#f2c94c', bg: 'rgba(242, 201, 76, 0.2)', label: '维护中' },
+const statusLevelMap: Record<string, SemanticLevel> = {
+  running: 'success',
+  stopped: 'unknown',
+  maintenance: 'warning',
 };
 
-function StatusTag({ status }: { status: string }) {
-  const cfg = statusColorMap[status] || statusColorMap.stopped;
-  return (
-    <Tag
-      style={{
-        background: cfg.bg,
-        color: cfg.color,
-        border: 'none',
-        borderRadius: 4,
-        fontSize: 12,
-        padding: '2px 8px',
-      }}
-    >
-      {cfg.label}
-    </Tag>
-  );
-}
+const statusLabelMap: Record<string, string> = {
+  running: '运行中',
+  stopped: '已停机',
+  maintenance: '维护中',
+};
 
 export default function ServerListPage() {
   const [data, setData] = useState<ServerItem[]>([]);
@@ -82,7 +73,7 @@ export default function ServerListPage() {
       dataIndex: 'hostname',
       key: 'hostname',
       render: (text: string) => (
-        <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>{text}</span>
+        <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>{text}</span>
       ),
     },
     {
@@ -90,57 +81,57 @@ export default function ServerListPage() {
       dataIndex: 'ip',
       key: 'ip',
       render: (text: string) => (
-        <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace' }}>{text}</span>
+        <span style={{ color: colors.text.secondary, fontFamily: fonts.mono }}>{text}</span>
       ),
     },
     {
       title: '操作系统',
       dataIndex: 'os',
       key: 'os',
-      render: (text: string) => <span style={{ color: '#aaaaaa' }}>{text}</span>,
+      render: (text: string) => <span style={{ color: colors.text.secondary }}>{text}</span>,
     },
     {
       title: 'CPU',
       dataIndex: 'cpuCores',
       key: 'cpuCores',
-      render: (v: number) => <span style={{ color: '#aaaaaa' }}>{v} 核</span>,
+      render: (v: number) => <span style={{ color: colors.text.secondary }}>{v} 核</span>,
     },
     {
       title: '内存',
       dataIndex: 'memoryGb',
       key: 'memoryGb',
-      render: (v: number) => <span style={{ color: '#aaaaaa' }}>{v} GB</span>,
+      render: (v: number) => <span style={{ color: colors.text.secondary }}>{v} GB</span>,
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => <StatusTag status={status} />,
+      render: (status: string) => (
+        <StatusTag level={statusLevelMap[status] || 'unknown'} label={statusLabelMap[status] || status} />
+      ),
     },
     {
       title: '运行时长',
       dataIndex: 'uptime',
       key: 'uptime',
-      render: (text: string) => <span style={{ color: '#aaaaaa' }}>{text}</span>,
+      render: (text: string) => <span style={{ color: colors.text.secondary }}>{text}</span>,
     },
   ];
 
   return (
     <div style={{ width: '100%' }}>
-      <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-        服务器管理
-      </h1>
+      <PageHeader title="服务器管理" />
 
       <Card
         style={{
-          background: '#1f1f1f',
+          background: colors.bg.panel,
           border: 'none',
-          borderRadius: 4,
+          borderRadius: radius.panel,
         }}
-        styles={{ body: { padding: 16 } }}
+        styles={{ body: { padding: spacing.panel } }}
       >
         <Space style={{ marginBottom: 16 }}>
-          <span style={{ color: '#aaaaaa' }}>状态筛选：</span>
+          <span style={{ color: colors.text.secondary }}>状态筛选：</span>
           <Select
             allowClear
             placeholder="全部状态"
@@ -177,17 +168,13 @@ export default function ServerListPage() {
       </Card>
 
       <Drawer
-        title={
-          <span style={{ color: '#ffffff' }}>
-            {selectedServer?.hostname || '服务器详情'}
-          </span>
-        }
+        title={<span style={{ color: colors.text.primary }}>{selectedServer?.hostname || '服务器详情'}</span>}
         open={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         width={560}
         styles={{
-          body: { background: '#141414', padding: 24 },
-          header: { background: '#1f1f1f', borderBottom: '1px solid #333333' },
+          body: { background: colors.bg.page, padding: 24 },
+          header: { background: colors.bg.panel, borderBottom: `1px solid ${colors.border}` },
           mask: { background: 'rgba(0,0,0,0.6)' },
         }}
       >
@@ -198,12 +185,12 @@ export default function ServerListPage() {
         ) : selectedServer ? (
           <div>
             <Descriptions
-              title={<span style={{ color: '#ffffff', fontSize: 16, fontWeight: 500 }}>基本信息</span>}
+              title={<span style={{ color: colors.text.primary, fontSize: fonts.size.h2, fontWeight: fonts.weight.h2 }}>基本信息</span>}
               column={2}
               styles={{
-              label: { color: '#aaaaaa' },
-              content: { color: '#ffffff' },
-            }}
+                label: { color: colors.text.secondary },
+                content: { color: colors.text.primary },
+              }}
               items={[
                 { key: '1', label: '主机名', children: selectedServer.hostname },
                 { key: '2', label: 'IP', children: selectedServer.ip },
@@ -213,7 +200,12 @@ export default function ServerListPage() {
                 {
                   key: '6',
                   label: '状态',
-                  children: <StatusTag status={selectedServer.status} />,
+                  children: (
+                    <StatusTag
+                      level={statusLevelMap[selectedServer.status] || 'unknown'}
+                      label={statusLabelMap[selectedServer.status] || selectedServer.status}
+                    />
+                  ),
                 },
                 { key: '7', label: '运行时长', children: selectedServer.uptime },
               ]}
@@ -221,12 +213,12 @@ export default function ServerListPage() {
 
             <h3
               style={{
-                color: '#ffffff',
-                fontSize: 16,
-                fontWeight: 500,
+                color: colors.text.primary,
+                fontSize: fonts.size.h2,
+                fontWeight: fonts.weight.h2,
                 marginTop: 32,
                 marginBottom: 16,
-                borderBottom: '1px solid #333333',
+                borderBottom: `1px solid ${colors.border}`,
                 paddingBottom: 8,
               }}
             >
@@ -237,21 +229,19 @@ export default function ServerListPage() {
               return (
                 <Row key={disk.mount} style={{ marginBottom: 12 }} align="middle">
                   <Col span={6}>
-                    <span style={{ color: '#aaaaaa', fontFamily: '"Roboto Mono", monospace' }}>
-                      {disk.mount}
-                    </span>
+                    <span style={{ color: colors.text.secondary, fontFamily: fonts.mono }}>{disk.mount}</span>
                   </Col>
                   <Col span={12}>
                     <Progress
                       percent={percent}
                       size="small"
-                      strokeColor={percent > 90 ? '#e02f44' : percent > 75 ? '#f2c94c' : '#73bf69'}
-                      railColor="#333333"
+                      strokeColor={percent > 90 ? colors.status.critical : percent > 75 ? colors.status.warning : colors.status.success}
+                      railColor={colors.border}
                       showInfo={false}
                     />
                   </Col>
                   <Col span={6} style={{ textAlign: 'right' }}>
-                    <span style={{ color: '#aaaaaa', fontSize: 12 }}>
+                    <span style={{ color: colors.text.secondary, fontSize: fonts.size.caption }}>
                       {disk.usedGb} / {disk.totalGb} GB
                     </span>
                   </Col>
@@ -261,12 +251,12 @@ export default function ServerListPage() {
 
             <h3
               style={{
-                color: '#ffffff',
-                fontSize: 16,
-                fontWeight: 500,
+                color: colors.text.primary,
+                fontSize: fonts.size.h2,
+                fontWeight: fonts.weight.h2,
                 marginTop: 32,
                 marginBottom: 16,
-                borderBottom: '1px solid #333333',
+                borderBottom: `1px solid ${colors.border}`,
                 paddingBottom: 8,
               }}
             >
@@ -279,27 +269,27 @@ export default function ServerListPage() {
               pagination={false}
               columns={[
                 {
-                  title: <span style={{ color: '#aaaaaa' }}>名称</span>,
+                  title: <span style={{ color: colors.text.secondary }}>名称</span>,
                   dataIndex: 'name',
                   key: 'name',
                   render: (v: string) => (
-                    <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>{v}</span>
+                    <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>{v}</span>
                   ),
                 },
                 {
-                  title: <span style={{ color: '#aaaaaa' }}>IP 地址</span>,
+                  title: <span style={{ color: colors.text.secondary }}>IP 地址</span>,
                   dataIndex: 'ip',
                   key: 'ip',
                   render: (v: string) => (
-                    <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>{v}</span>
+                    <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>{v}</span>
                   ),
                 },
                 {
-                  title: <span style={{ color: '#aaaaaa' }}>MAC 地址</span>,
+                  title: <span style={{ color: colors.text.secondary }}>MAC 地址</span>,
                   dataIndex: 'mac',
                   key: 'mac',
                   render: (v: string) => (
-                    <span style={{ color: '#ffffff', fontFamily: '"Roboto Mono", monospace' }}>{v}</span>
+                    <span style={{ color: colors.text.primary, fontFamily: fonts.mono }}>{v}</span>
                   ),
                 },
               ]}

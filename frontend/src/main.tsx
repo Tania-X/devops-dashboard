@@ -1,11 +1,24 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ConfigProvider, theme } from 'antd'
+import { colors, fonts, radius } from './theme/tokens'
 import './index.css'
 import './api/auth-interceptor' // 注册 axios 请求拦截器（自动附加 JWT，独立于 orval 生成文件）
 import App from './App.tsx'
 
 async function bootstrap() {
+  // 将 Design Token 注入 CSS 变量（供 index.css 的全局样式使用），
+  // 保证颜色单一来源：改视觉只需改 tokens.ts，无需同步 CSS。
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty('--bg-page', colors.bg.page);
+  rootStyle.setProperty('--bg-panel-hover', colors.bg.panelHover);
+  rootStyle.setProperty('--bg-sidebar', colors.bg.sidebar);
+  rootStyle.setProperty('--text-primary', colors.text.primary);
+  rootStyle.setProperty('--text-secondary', colors.text.secondary);
+  rootStyle.setProperty('--accent-primary', colors.brand.primary);
+  rootStyle.setProperty('--accent-primary-rgb', colors.brand.primaryRgb);
+  rootStyle.setProperty('--border-light', colors.borderLight);
+
   if (import.meta.env.VITE_USE_MSW === 'true') {
     const { worker } = await import('./mocks/browser')
     await worker.start({
@@ -19,16 +32,22 @@ async function bootstrap() {
         theme={{
           algorithm: theme.darkAlgorithm,
           token: {
-            colorBgBase: '#141414',
-            colorBgContainer: '#1f1f1f',
-            colorTextBase: '#ffffff',
-            colorPrimary: '#177ddc',
-            colorSuccess: '#73bf69',
-            colorWarning: '#f2c94c',
-            colorError: '#e02f44',
-            borderRadius: 4,
-            fontSize: 14,
-            fontFamily: '"Inter", "PingFang SC", "Microsoft YaHei", sans-serif',
+            // 与 spec/ui-theme.md 的映射关系（见规范第 9 节）
+            colorBgBase: colors.bg.page,           // --bg-page
+            colorBgContainer: colors.bg.panel,     // --bg-panel
+            colorBgElevated: colors.bg.panelHover, // 下拉/弹层背景
+            colorTextBase: colors.text.primary,    // --text-primary
+            colorTextSecondary: colors.text.secondary,
+            colorTextTertiary: colors.text.muted,
+            colorPrimary: colors.brand.primary,    // --accent-primary
+            colorSuccess: colors.status.success,   // 正常态
+            colorWarning: colors.status.warning,   // 警告态
+            colorError: colors.status.critical,    // 严重态
+            colorInfo: colors.status.info,         // 信息态
+            colorBorder: colors.border,
+            borderRadius: radius.panel,            // Panel 圆角
+            fontSize: fonts.size.body,             // Body 字号
+            fontFamily: fonts.family,
           },
         }}
       >

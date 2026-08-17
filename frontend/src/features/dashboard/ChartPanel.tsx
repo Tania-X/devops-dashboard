@@ -3,6 +3,7 @@ import { Card, Spin } from 'antd';
 import * as echarts from 'echarts';
 import type { ChartPanelConfig } from './dashboard-config';
 import { getDevOpsDashboardAPI } from '../../api/client';
+import { colors, fonts, radius } from '../../theme/tokens';
 
 interface ChartPanelProps {
   config: ChartPanelConfig;
@@ -75,8 +76,8 @@ export default function ChartPanel({ config }: ChartPanelProps) {
             tooltip: {
               trigger: 'axis',
               backgroundColor: 'rgba(0,0,0,0.8)',
-              borderColor: '#333',
-              textStyle: { color: '#ffffff' },
+              borderColor: colors.border,
+              textStyle: { color: colors.text.primary },
               valueFormatter: (value: unknown) => {
                 const num = Number(value);
                 return Number.isFinite(num) ? num.toFixed(1) + '%' : String(value);
@@ -84,7 +85,7 @@ export default function ChartPanel({ config }: ChartPanelProps) {
             },
             legend: {
               data: config.series.map((s) => s.name),
-              textStyle: { color: '#aaaaaa' },
+              textStyle: { color: colors.text.secondary },
               top: 0,
               left: 0,
             },
@@ -92,9 +93,9 @@ export default function ChartPanel({ config }: ChartPanelProps) {
               type: 'category',
               data: dsCpu.labels,
               boundaryGap: false,
-              axisLine: { lineStyle: { color: '#333' } },
+              axisLine: { lineStyle: { color: colors.border } },
               axisLabel: {
-                color: '#aaaaaa',
+                color: colors.text.secondary,
                 fontSize: 11,
                 // 根据数据量自动控制显示密度，约每页 12 个标签
                 interval: Math.max(0, Math.floor(dsCpu.labels.length / 12 - 1)),
@@ -106,9 +107,9 @@ export default function ChartPanel({ config }: ChartPanelProps) {
               type: 'value',
               min: 0,
               max: 100,
-              axisLine: { lineStyle: { color: '#333' } },
-              axisLabel: { color: '#aaaaaa', fontSize: 11, formatter: (v: number) => v.toFixed(1) + '%' },
-              splitLine: { lineStyle: { color: '#333', type: 'dashed' } },
+              axisLine: { lineStyle: { color: colors.border } },
+              axisLabel: { color: colors.text.secondary, fontSize: 11, formatter: (v: number) => v.toFixed(1) + '%' },
+              splitLine: { lineStyle: { color: colors.border, type: 'dashed' } },
             },
             series: config.series.map((s) => {
               const serieData =
@@ -166,15 +167,15 @@ export default function ChartPanel({ config }: ChartPanelProps) {
     <Card
       title={config.title}
       style={{
-        background: '#1f1f1f',
+        background: colors.bg.panel,
         border: 'none',
-        borderRadius: 4,
+        borderRadius: radius.panel,
       }}
       headStyle={{
-        color: '#ffffff',
-        borderBottom: '1px solid #333333',
-        fontSize: 16,
-        fontWeight: 500,
+        color: colors.text.primary,
+        borderBottom: `1px solid ${colors.border}`,
+        fontSize: fonts.size.h2,
+        fontWeight: fonts.weight.h2,
       }}
     >
       <div style={{ height: config.height, position: 'relative', overflow: 'hidden' }}>
@@ -190,7 +191,7 @@ export default function ChartPanel({ config }: ChartPanelProps) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#1f1f1f',
+              background: colors.bg.panel,
               zIndex: 1,
             }}
           >

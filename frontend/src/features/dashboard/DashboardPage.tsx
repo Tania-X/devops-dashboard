@@ -4,6 +4,7 @@ import StatPanel from './StatPanel';
 import ChartPanel from './ChartPanel';
 import AlertListPanel from './AlertListPanel';
 import QuickLinksPanel from './QuickLinksPanel';
+import PageHeader from '../../components/PageHeader';
 import type { PanelConfig } from './dashboard-config';
 
 function renderPanel(config: PanelConfig) {
@@ -24,9 +25,8 @@ function renderPanel(config: PanelConfig) {
 export default function DashboardPage() {
   return (
     <div style={{ width: '100%' }}>
-      <h1 style={{ color: '#ffffff', fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-        {dashboardConfig.title}
-      </h1>
+      {/* 按 AGENTS.md「开发克制(硬性)」：不在 UI 加解释性文案，仅渲染标题 */}
+      <PageHeader title={dashboardConfig.title} />
       {dashboardConfig.rows.map((row, rowIndex) => (
         <Row key={rowIndex} gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {row.panels.map((panel, panelIndex) => (
