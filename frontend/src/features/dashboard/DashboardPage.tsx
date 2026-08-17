@@ -25,7 +25,8 @@ function renderPanel(config: PanelConfig) {
 export default function DashboardPage() {
   return (
     <div style={{ width: '100%' }}>
-      <PageHeader title={dashboardConfig.title} description={dashboardConfig.description} />
+      {/* 按 AGENTS.md「开发克制(硬性)」：不在 UI 加解释性文案，仅渲染标题 */}
+      <PageHeader title={dashboardConfig.title} />
       {dashboardConfig.rows.map((row, rowIndex) => (
         <Row key={rowIndex} gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {row.panels.map((panel, panelIndex) => (
