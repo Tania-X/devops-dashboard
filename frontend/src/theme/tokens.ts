@@ -19,6 +19,8 @@ export const colors = {
     header: '#111217',
     /** 侧边栏背景 --bg-sidebar */
     sidebar: '#000000',
+    /** 控件/提示背景（输入框、Alert、分组容器等深色内嵌元素） */
+    control: '#111217',
   },
 
   /** 文本色（spec 2.2） */

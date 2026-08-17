@@ -165,7 +165,7 @@ function WebhookSettingsTab() {
             <Input
               placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
               disabled={readOnly}
-              style={{ background: colors.bg.header, color: colors.text.primary }}
+              style={{ background: colors.bg.control, color: colors.text.primary }}
             />
           </Form.Item>
 
@@ -177,7 +177,7 @@ function WebhookSettingsTab() {
             <Input.Password
               placeholder="仅钉钉渠道需要，留空表示不修改"
               disabled={readOnly}
-              style={{ background: colors.bg.header, color: colors.text.primary }}
+              style={{ background: colors.bg.control, color: colors.text.primary }}
             />
           </Form.Item>
 
@@ -186,7 +186,7 @@ function WebhookSettingsTab() {
               type="info"
               showIcon
               message="保存后立即生效，无需重启服务。告警产生时（CPU/内存/磁盘超阈值）会自动推送到该地址。"
-              style={{ marginBottom: 24, background: colors.bg.header, border: `1px solid ${colors.border}` }}
+              style={{ marginBottom: 24, background: colors.bg.control, border: `1px solid ${colors.border}` }}
             />
           )}
 

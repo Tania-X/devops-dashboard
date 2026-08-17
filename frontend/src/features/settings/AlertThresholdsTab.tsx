@@ -93,7 +93,7 @@ export default function AlertThresholdsTab() {
               value={t.warnThreshold}
               disabled={!canManage}
               onChange={(v) => updateField(t.metric, 'warnThreshold', v)}
-              style={{ width: 90, background: colors.bg.header, color: colors.text.primary }}
+              style={{ width: 90, background: colors.bg.control, color: colors.text.primary }}
             />
             <Text style={{ color: colors.text.muted }}>%</Text>
             <Text style={{ color: colors.text.muted }}>critical(红) 超过</Text>
@@ -103,7 +103,7 @@ export default function AlertThresholdsTab() {
               value={t.critThreshold}
               disabled={!canManage}
               onChange={(v) => updateField(t.metric, 'critThreshold', v)}
-              style={{ width: 90, background: colors.bg.header, color: colors.text.primary }}
+              style={{ width: 90, background: colors.bg.control, color: colors.text.primary }}
             />
             <Text style={{ color: colors.text.muted }}>%</Text>
             {canManage && (

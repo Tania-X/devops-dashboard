@@ -288,7 +288,7 @@ export default function RolePermissions() {
           type="info"
           showIcon
           message="勾选保存后立即生效，无需重新登录。被移除权限的角色，其用户访问相应接口将返回 403。"
-          style={{ marginBottom: 16, background: colors.bg.header, border: `1px solid ${colors.border}` }}
+          style={{ marginBottom: 16, background: colors.bg.control, border: `1px solid ${colors.border}` }}
         />
       )}
 
@@ -308,7 +308,7 @@ export default function RolePermissions() {
                   border: `1px solid ${colors.border}`,
                   borderRadius: 6,
                   padding: '10px 14px',
-                  background: colors.bg.header,
+                  background: colors.bg.control,
                   opacity: locked ? 0.6 : 1,
                 }}
               >
