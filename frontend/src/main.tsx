@@ -7,6 +7,17 @@ import './api/auth-interceptor' // 注册 axios 请求拦截器（自动附加 J
 import App from './App.tsx'
 
 async function bootstrap() {
+  // 将 Design Token 注入 CSS 变量（供 index.css 的全局样式使用），
+  // 保证颜色单一来源：改视觉只需改 tokens.ts，无需同步 CSS。
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty('--bg-page', colors.bg.page);
+  rootStyle.setProperty('--bg-panel-hover', colors.bg.panelHover);
+  rootStyle.setProperty('--bg-sidebar', colors.bg.sidebar);
+  rootStyle.setProperty('--text-primary', colors.text.primary);
+  rootStyle.setProperty('--text-secondary', colors.text.secondary);
+  rootStyle.setProperty('--accent-primary', colors.brand.primary);
+  rootStyle.setProperty('--border-light', colors.borderLight);
+
   if (import.meta.env.VITE_USE_MSW === 'true') {
     const { worker } = await import('./mocks/browser')
     await worker.start({
