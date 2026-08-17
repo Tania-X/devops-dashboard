@@ -8,9 +8,8 @@ import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
 import { usePermission } from '../../hooks/usePermission';
 import { colors, radius } from '../../theme/tokens';
 
-/** 角色 → 语义状态（operator/viewer 走状态色；admin 用专用角色色，见渲染处） */
+/** 角色 → 语义状态（仅 operator/viewer 走状态色；admin 在渲染处用专用角色色） */
 const roleLevelMap: Record<string, SemanticLevel> = {
-  admin: 'info',
   operator: 'info',
   viewer: 'unknown',
 };

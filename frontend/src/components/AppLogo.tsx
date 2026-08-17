@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { colors } from '../theme/tokens';
 
 interface AppLogoProps {
@@ -12,6 +13,9 @@ interface AppLogoProps {
  * 寓意"持续观测、心跳在线"。渐变蓝呼应品牌色。
  */
 export default function AppLogo({ showText = true, size = 32 }: AppLogoProps) {
+  // useId 保证渐变 id 唯一：同一页面渲染多个 Logo（如 StrictMode 双渲染）时避免 SVG id 冲突
+  const gradientId = useId().replace(/[:]/g, 'logo-grad');
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <svg
@@ -23,15 +27,15 @@ export default function AppLogo({ showText = true, size = 32 }: AppLogoProps) {
         aria-label="DevOps Dashboard logo"
       >
         <defs>
-          <linearGradient id="ddg-brand" x1="0" y1="48" x2="48" y2="0">
+          <linearGradient id={gradientId} x1="0" y1="48" x2="48" y2="0">
             <stop offset="0%" stopColor={colors.brand.primary} />
             <stop offset="100%" stopColor={colors.brand.gradientEnd} />
           </linearGradient>
         </defs>
         {/* 三个脉冲柱（等宽数字风格：信号强度） */}
-        <rect x="6" y="22" width="7" height="16" rx="2" fill="url(#ddg-brand)" opacity="0.55" />
-        <rect x="20.5" y="12" width="7" height="26" rx="2" fill="url(#ddg-brand)" opacity="0.8" />
-        <rect x="35" y="4" width="7" height="34" rx="2" fill="url(#ddg-brand)" />
+        <rect x="6" y="22" width="7" height="16" rx="2" fill={`url(#${gradientId})`} opacity="0.55" />
+        <rect x="20.5" y="12" width="7" height="26" rx="2" fill={`url(#${gradientId})`} opacity="0.8" />
+        <rect x="35" y="4" width="7" height="34" rx="2" fill={`url(#${gradientId})`} />
         {/* 底部扫描线 */}
         <path d="M4 42 H44" stroke={colors.status.success} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
       </svg>
