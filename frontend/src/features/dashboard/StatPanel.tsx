@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import React from 'react';
 import { Card, Spin } from 'antd';
 import type { StatPanelConfig } from './dashboard-config';
@@ -26,9 +26,17 @@ function getStatusColor(value: number, thresholds?: { warning: number; critical:
   return colors.status.success;
 }
 
+/**
+ * Stat Panel 大数字卡片
+ * - 15s 轮询；对比上次采样显示趋势行（↑/↓/→，监控语义：数值升高用警告色）
+ * - hover 上浮 + 阴影（spec 7 动画规范）
+ */
 export default function StatPanel({ config }: StatPanelProps) {
   const [value, setValue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  /** 上次采样的值，用于计算采样间变化 */
+  const prevValueRef = useRef<number | null>(null);
+  const [delta, setDelta] = useState<number | null>(null);
 
   useEffect(() => {
     const api = getDevOpsDashboardAPI();
@@ -41,7 +49,12 @@ export default function StatPanel({ config }: StatPanelProps) {
           if (cancelled) return;
           retryCount = 0;
           const raw = getValueByPath(res.data, config.dataKey);
-          setValue(typeof raw === 'number' ? raw : Number(raw) || 0);
+          const next = typeof raw === 'number' ? raw : Number(raw) || 0;
+          if (prevValueRef.current !== null) {
+            setDelta(Number((next - prevValueRef.current).toFixed(1)));
+          }
+          prevValueRef.current = next;
+          setValue(next);
           if (!cancelled) setLoading(false);
         })
         .catch((err) => {
@@ -70,14 +83,28 @@ export default function StatPanel({ config }: StatPanelProps) {
   const displayValue = value !== null ? `${value.toFixed(1)}${config.unit === 'percent' ? '%' : ''}` : '--';
   const statusColor = value !== null ? getStatusColor(value, config.thresholds) : colors.text.primary;
 
+  // 趋势行：符号 + 数值。监控语义下数值升高=负载上升（警告色），下降=恢复（成功色）
+  let trendText = '—';
+  let trendColor: string = colors.text.muted;
+  if (delta !== null) {
+    if (Math.abs(delta) < 0.05) {
+      trendText = '→ 持平';
+    } else {
+      trendText = `${delta > 0 ? '↑' : '↓'} ${Math.abs(delta).toFixed(1)}`;
+      trendColor = delta > 0 ? colors.status.warning : colors.status.success;
+    }
+  }
+
   return (
     <Card
+      className="stat-panel"
       style={{
         background: colors.bg.panel,
         border: 'none',
         borderRadius: radius.panel,
         height: 120,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+        // boxShadow / transition 在 index.css 的 .stat-panel 类中定义，
+        // 避免内联样式优先级覆盖 hover 规则（AI review round 1）
       }}
       styles={{ body: { padding: spacing.panel } }}
     >
@@ -95,9 +122,21 @@ export default function StatPanel({ config }: StatPanelProps) {
               fontWeight: fonts.weight.number,
               color: statusColor,
               fontFamily: fonts.mono,
+              lineHeight: 1.1,
             }}
           >
             {displayValue}
+          </div>
+          {/* 趋势行：对比上次采样（15s 前） */}
+          <div
+            style={{
+              color: trendColor,
+              fontSize: fonts.size.caption,
+              fontFamily: fonts.mono,
+              marginTop: 4,
+            }}
+          >
+            {trendText}
           </div>
         </div>
       )}
