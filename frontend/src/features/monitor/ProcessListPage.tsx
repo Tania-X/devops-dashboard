@@ -20,7 +20,8 @@ import { colors, fonts, radius, spacing } from '../../theme/tokens';
 
 const statusLevelMap: Record<string, SemanticLevel> = {
   running: 'success',
-  sleep: 'info',
+  // sleep 与原实现一致用绿色（与 running 同色系，属正常态），不要改成蓝色
+  sleep: 'success',
   idle: 'unknown',
   stop: 'critical',
   zombie: 'warning',

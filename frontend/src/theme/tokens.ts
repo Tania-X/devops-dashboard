@@ -37,6 +37,14 @@ export const colors = {
     primary: '#177ddc',
     /** 按钮悬停态 --accent-primary-hover */
     hover: '#3c9ae8',
+    /** 品牌渐变终点色（AppLogo / 登录页氛围） */
+    gradientEnd: '#3fb6d9',
+  },
+
+  /** 角色色（RBAC 角色标签，spec 无定义，沿用既有视觉语义） */
+  role: {
+    /** 管理员 —— 最高权限，紫色（与原 roleColorMap admin 一致） */
+    admin: '#534ab7',
   },
 
   /** 状态色（spec 2.4，与 Grafana 对齐） */

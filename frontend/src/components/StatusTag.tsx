@@ -8,19 +8,24 @@ interface StatusTagProps {
   level?: SemanticLevel;
   /** 展示文字（默认用级别的英文大写） */
   label?: string;
+  /** 自定义文字色（覆盖 level 默认色；颜色应来自 theme/tokens.ts） */
+  color?: string;
+  /** 自定义背景色（覆盖 level 默认背景） */
+  bg?: string;
 }
 
 /**
  * 统一状态标签 —— 替代各页面重复定义的 statusColorMap / levelColorMap。
  * 颜色来自 theme/tokens.ts 的 semanticStatus（spec 6.1），保证全系统一致。
+ * 需要语义级别之外的专用色（如角色色）时，可用 color/bg 覆盖，但色值仍需取 tokens。
  */
-export default function StatusTag({ level = 'unknown', label }: StatusTagProps) {
+export default function StatusTag({ level = 'unknown', label, color, bg }: StatusTagProps) {
   const cfg = semanticStatus[level] || semanticStatus.unknown;
   return (
     <Tag
       style={{
-        background: cfg.bg,
-        color: cfg.color,
+        background: bg ?? cfg.bg,
+        color: color ?? cfg.color,
         border: 'none',
         borderRadius: radius.panel,
         fontSize: 12,

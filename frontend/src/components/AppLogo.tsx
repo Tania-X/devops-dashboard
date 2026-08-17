@@ -25,7 +25,7 @@ export default function AppLogo({ showText = true, size = 32 }: AppLogoProps) {
         <defs>
           <linearGradient id="ddg-brand" x1="0" y1="48" x2="48" y2="0">
             <stop offset="0%" stopColor={colors.brand.primary} />
-            <stop offset="100%" stopColor="#3fb6d9" />
+            <stop offset="100%" stopColor={colors.brand.gradientEnd} />
           </linearGradient>
         </defs>
         {/* 三个脉冲柱（等宽数字风格：信号强度） */}

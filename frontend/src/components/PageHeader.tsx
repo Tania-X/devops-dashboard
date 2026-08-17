@@ -1,4 +1,4 @@
-import { fonts } from '../theme/tokens';
+import { colors, fonts } from '../theme/tokens';
 
 interface PageHeaderProps {
   title: string;
@@ -15,7 +15,7 @@ export default function PageHeader({ title, description }: PageHeaderProps) {
     <div style={{ marginBottom: 24 }}>
       <h1
         style={{
-          color: 'var(--text-primary)',
+          color: colors.text.primary,
           fontSize: fonts.size.h1,
           fontWeight: fonts.weight.h1,
           margin: 0,
@@ -24,7 +24,7 @@ export default function PageHeader({ title, description }: PageHeaderProps) {
         {title}
       </h1>
       {description && (
-        <p style={{ color: 'var(--text-secondary)', fontSize: fonts.size.caption, margin: '6px 0 0' }}>
+        <p style={{ color: colors.text.secondary, fontSize: fonts.size.caption, margin: '6px 0 0' }}>
           {description}
         </p>
       )}

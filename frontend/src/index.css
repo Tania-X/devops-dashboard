@@ -1,31 +1,16 @@
-/* DevOps Dashboard 全局样式 —— 颜色一律引用 Design Token（src/theme/tokens.ts） */
+/* DevOps Dashboard 全局样式
+ * 说明：颜色单一来源是 src/theme/tokens.ts（组件一律取 TS token）。
+ * 这里的 CSS 变量仅服务于本文件内的全局样式（滚动条/选中色/侧边栏菜单），
+ * 不与组件取值并存，避免双源漂移。
+ */
 
 :root {
-  /* 背景色（spec 2.1）—— 与 tokens.ts 保持一致 */
   --bg-page: #141414;
-  --bg-panel: #1f1f1f;
   --bg-panel-hover: #2a2a2a;
-  --bg-header: #111217;
   --bg-sidebar: #000000;
-
-  /* 文本色（spec 2.2） */
   --text-primary: #ffffff;
   --text-secondary: #aaaaaa;
-  --text-muted: #666666;
-
-  /* 品牌色（spec 2.3） */
   --accent-primary: #177ddc;
-  --accent-primary-hover: #3c9ae8;
-
-  /* 状态色（spec 2.4） */
-  --status-success: #73bf69;
-  --status-warning: #f2c94c;
-  --status-critical: #e02f44;
-  --status-info: #3274d9;
-  --status-unknown: #aaaaaa;
-
-  /* 边框 */
-  --border: #333333;
   --border-light: #555555;
 }
 

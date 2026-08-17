@@ -8,9 +8,9 @@ import StatusTag, { type SemanticLevel } from '../../components/StatusTag';
 import { usePermission } from '../../hooks/usePermission';
 import { colors, radius } from '../../theme/tokens';
 
-/** 角色 → 语义状态（颜色统一走 StatusTag / tokens） */
+/** 角色 → 语义状态（operator/viewer 走状态色；admin 用专用角色色，见渲染处） */
 const roleLevelMap: Record<string, SemanticLevel> = {
-  admin: 'critical',
+  admin: 'info',
   operator: 'info',
   viewer: 'unknown',
 };
@@ -149,9 +149,13 @@ export default function UserPage() {
       title: '角色',
       dataIndex: 'role',
       key: 'role',
-      render: (role: string) => (
-        <StatusTag level={roleLevelMap[role] || 'unknown'} label={roleLabelMap[role] || role} />
-      ),
+      render: (role: string) =>
+        role === 'admin' ? (
+          // admin 用专用角色色（紫），避免 critical 红的错误语义暗示
+          <StatusTag level="unknown" label={roleLabelMap[role] || role} color={colors.role.admin} bg="rgba(83, 74, 183, 0.2)" />
+        ) : (
+          <StatusTag level={roleLevelMap[role] || 'unknown'} label={roleLabelMap[role] || role} />
+        ),
     },
     { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt' },
     {
