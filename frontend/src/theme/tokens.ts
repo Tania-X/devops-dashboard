@@ -39,6 +39,8 @@ export const colors = {
     hover: '#3c9ae8',
     /** 品牌渐变终点色（AppLogo / 登录页氛围） */
     gradientEnd: '#3fb6d9',
+    /** 主色 RGB 分量（供 CSS rgba() 半透明变体使用，如菜单选中态背景） */
+    primaryRgb: '23, 125, 220',
   },
 
   /** 角色色（RBAC 角色标签，spec 无定义，沿用既有视觉语义） */

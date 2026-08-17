@@ -16,6 +16,7 @@ async function bootstrap() {
   rootStyle.setProperty('--text-primary', colors.text.primary);
   rootStyle.setProperty('--text-secondary', colors.text.secondary);
   rootStyle.setProperty('--accent-primary', colors.brand.primary);
+  rootStyle.setProperty('--accent-primary-rgb', colors.brand.primaryRgb);
   rootStyle.setProperty('--border-light', colors.borderLight);
 
   if (import.meta.env.VITE_USE_MSW === 'true') {
