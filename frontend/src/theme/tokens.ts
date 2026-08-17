@@ -49,6 +49,16 @@ export const colors = {
   role: {
     /** 管理员 —— 最高权限，紫色（与原 roleColorMap admin 一致） */
     admin: '#534ab7',
+    /** 锁定角色标记（内置角色不可编辑的锁图标） */
+    locked: '#d89614',
+  },
+
+  /** 告警提示条（Alert 组件自定义底色，spec 未定义） */
+  alert: {
+    /** 警告型提示背景 */
+    warningBg: '#2a2018',
+    /** 警告型提示边框 */
+    warningBorder: '#4a3a28',
   },
 
   /** 状态色（spec 2.4，与 Grafana 对齐） */

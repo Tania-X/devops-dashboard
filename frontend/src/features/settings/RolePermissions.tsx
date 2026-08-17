@@ -206,7 +206,7 @@ export default function RolePermissions() {
               <Space size={6}>
                 {r.label}
                 <span style={{ color: colors.text.muted, fontSize: 12 }}>({r.name})</span>
-                {r.locked && <LockOutlined style={{ color: '#d89614' }} />}
+                {r.locked && <LockOutlined style={{ color: colors.role.locked }} />}
               </Space>
             ),
           }))}
@@ -281,7 +281,7 @@ export default function RolePermissions() {
           type="warning"
           showIcon
           message="admin 为通配策略（拥有全部权限），不可修改。如确需调整，请联系开发者修改后端 seed 配置。"
-          style={{ marginBottom: 16, background: '#2a2018', border: '1px solid #4a3a28' }}
+          style={{ marginBottom: 16, background: colors.alert.warningBg, border: `1px solid ${colors.alert.warningBorder}` }}
         />
       ) : (
         <Alert
