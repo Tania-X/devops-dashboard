@@ -26,8 +26,10 @@ ignore_paths:
   - "**/.idea/**"
   - "**/.vscode/**"
 
-# 只发出达到该级别及以上的问题(error > warn > info)。初版建议 warn,嫌吵改 error。
-min_severity: "warn"
+# 严重级别 1-5: 1建议 2轻微 3必修 4严重 5致命
+min_severity: 2              # 只发出 2 级(轻微)及以上的问题
+require_fix_severity: 3      # 必修线: 3 级(有真实触发路径/约定违反)标记"必修"
+fail_on_severity: 4          # 阻塞线: 4 级(严重/致命)及以上 check 失败拦合并
 
 # 切片:大 PR 按批审,控制单次 prompt token 与成本
 max_files_per_batch: 20
