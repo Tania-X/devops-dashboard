@@ -108,6 +108,28 @@ func TestChangeStatus(t *testing.T) {
 	}
 }
 
+// TestChangeStatus_NewRound:终态后进入 deploying 表示"新一轮发布开始"(合法中间态)。
+// 根状态进入 deploying、最新历史保留上一轮结果——deploying 下与最新历史不同步是合法语义。
+func TestChangeStatus_NewRound(t *testing.T) {
+	d, _ := NewDeployment("api-gateway", "v2.1.0", "prod")
+	at := time.Now()
+	if err := d.AddHistory("v2.1.0", "operator-1", 120, HistoryStatusSuccess, at); err != nil {
+		t.Fatalf("AddHistory() error = %v", err)
+	}
+
+	// 新一轮发布开始：终态 → deploying（合法）
+	if err := d.ChangeStatus(DeploymentStatusDeploying); err != nil {
+		t.Fatalf("终态后 ChangeStatus(deploying) 应合法, got %v", err)
+	}
+	if d.Status != DeploymentStatusDeploying {
+		t.Errorf("根状态 = %q, want deploying", d.Status)
+	}
+	// 历史保留上一轮结果，LatestHistory 仍为 success
+	if latest := d.LatestHistory(); latest == nil || latest.Status != HistoryStatusSuccess {
+		t.Errorf("deploying 中间态下最新历史应保留上一轮 success, got %+v", latest)
+	}
+}
+
 func TestLatestHistory_Empty(t *testing.T) {
 	d, _ := NewDeployment("api-gateway", "v2.1.0", "prod")
 	if got := d.LatestHistory(); got != nil {

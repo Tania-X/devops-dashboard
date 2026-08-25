@@ -161,7 +161,9 @@ func seedDeployments(db *gorm.DB) {
 			}
 		}
 
-		// 少量应用模拟"正在发布"(部署流程中间态,由 ChangeStatus 表达)
+		// 少量应用模拟"新一轮发布进行中"：历史已按上一轮结果落定（终态不变式满足），
+		// ChangeStatus(deploying) 表示新一轮发布开始——根状态进入中间态、历史保留上一轮结果，
+		// 与领域状态机语义一致（deploying 下根状态与最新历史不同步是合法的）
 		if rand.Intn(100) < 20 {
 			if err := deployment.ChangeStatus(deploymentdomain.DeploymentStatusDeploying); err != nil {
 				slog.Error("seed deployment change status failed", "error", err)

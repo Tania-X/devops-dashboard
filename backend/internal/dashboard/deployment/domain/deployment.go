@@ -25,8 +25,10 @@ const (
 // Deployment 部署聚合根（充血模型）。
 //
 // 聚合边界 = Deployment + DeploymentHistory：
-//   - 历史只能经 AddHistory 追加，根状态与最新一次部署结果保持同步（不变式）
-//   - ChangeStatus 仅用于部署流程中间态（pending → deploying），终态一律经 AddHistory
+//   - 状态机：pending → deploying → success/failed；新一轮发布可从任意状态（含终态）进入 deploying
+//   - 不变式：根状态为终态（success/failed）时与最新一次部署结果保持同步（由 AddHistory 保证）；
+//     deploying/pending 是流程中间态——"正在进行一轮发布"，最新历史保留上一轮结果，根状态与其不同步是合法的
+//   - 终态只能经 AddHistory 写入；ChangeStatus 仅允许中间态（pending/deploying）
 //   - 外部不得直接修改 Histories
 //
 // 说明：Histories 因 GORM 关联持久化（Preload/外键保存）需要保持导出字段；
@@ -74,8 +76,9 @@ func NewDeployment(appName, version, env string) (*Deployment, error) {
 	}, nil
 }
 
-// AddHistory 新增一次部署结果：校验不变式 → 同步根状态/版本/时间 → 追加历史。
-// 两条写操作在这里绑定为一次业务原子操作，调用方事务内保存即可，无中间态窗口。
+// AddHistory 记录一次部署结果（终态落定）：校验 → 同步根状态/版本/时间 → 追加历史。
+// 不变式：调用后根状态与最新历史一致（success/failed）；两条写操作绑定为一次业务
+// 原子操作，调用方事务内保存即可，无中间态窗口。
 func (d *Deployment) AddHistory(version, operator string, durationSec int, status string, deployedAt time.Time) error {
 	if version == "" {
 		return errors.New("版本号不能为空")
@@ -103,9 +106,10 @@ func (d *Deployment) AddHistory(version, operator string, durationSec int, statu
 	return nil
 }
 
-// ChangeStatus 变更根状态（仅限部署流程中间态：pending → deploying）。
-// 终态（success/failed）一律由 AddHistory 写入——AddHistory 内部会同步根状态与
-// 最新历史；绕过它直接写终态会使根状态与最新历史脱节（违反不变式）。
+// ChangeStatus 变更根状态（仅允许中间态：pending / deploying）。
+// deploying 表示"新一轮发布开始"，可从任意状态（含终态）进入，进入后历史保持不变
+// （最新历史仍为上一轮结果）；终态（success/failed）一律由 AddHistory 写入，
+// 绕过它直接写终态会使根状态与最新历史脱节（违反终态不变式）。
 func (d *Deployment) ChangeStatus(status string) error {
 	switch status {
 	case DeploymentStatusPending, DeploymentStatusDeploying:
