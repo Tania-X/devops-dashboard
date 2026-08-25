@@ -7,6 +7,7 @@ import (
 	"time"
 
 	serverdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/domain"
+	deploymentdomain "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/deployment/domain"
 	"github.com/Tania-X/devops-dashboard/backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -130,43 +131,53 @@ func seedLogs(db *gorm.DB) {
 func seedDeployments(db *gorm.DB) {
 	appNames := []string{"api-gateway", "user-service", "order-service", "payment-service", "notification-service", "auth-service", "log-collector", "monitor-agent", "config-server", "cache-proxy", "search-engine", "report-generator", "data-sync", "file-storage", "web-frontend"}
 	envs := []string{"dev", "test", "prod"}
-	statuses := []string{"pending", "deploying", "success", "failed"}
 	historyStatuses := []string{"success", "failed"}
 
 	for i := 0; i < 15; i++ {
-		id := fmt.Sprintf("app-%03d", i+1)
 		appName := appNames[i]
 		version := fmt.Sprintf("v2.%d.%d", rand.Intn(5), rand.Intn(10))
+		env := envs[rand.Intn(len(envs))]
 
-		deployment := model.Deployment{
-			ID:             id,
-			AppName:        appName,
-			Version:        version,
-			Env:            envs[rand.Intn(len(envs))],
-			Status:         statuses[rand.Intn(len(statuses))],
-			LastDeployedAt: time.Now().Add(-time.Duration(rand.Intn(72)) * time.Hour),
-		}
-
-		if err := db.Create(&deployment).Error; err != nil {
-			slog.Error("seed deployment failed", "error", err)
+		// 聚合根工厂:ID 生成 + 初始状态 pending 收敛到领域层
+		deployment, err := deploymentdomain.NewDeployment(appName, version, env)
+		if err != nil {
+			slog.Error("seed deployment factory failed", "error", err)
 			continue
 		}
 
+		// 历史经聚合根方法追加:根状态/版本/时间与最新一次部署结果自动同步(不变式)。
+		// 追加顺序按时间严格从旧到新(固定步长,无随机波动):最后一次 AddHistory 对应
+		// 最新部署——根状态/LastDeployedAt/LatestHistory 指向最新一次,而非最旧一次。
 		historyCount := 3 + rand.Intn(6)
-		histories := make([]model.DeploymentHistory, historyCount)
+		step := time.Duration(6+rand.Intn(12)) * time.Hour // 相邻两次部署间隔 6~18h
+		base := time.Now()
 		for j := 0; j < historyCount; j++ {
-			histories[j] = model.DeploymentHistory{
-				DeploymentID: id,
-				Version:      fmt.Sprintf("v2.%d.%d", rand.Intn(5), rand.Intn(10)),
-				Operator:     fmt.Sprintf("operator-%d", rand.Intn(10)+1),
-				DurationSec:  30 + rand.Intn(570),
-				Status:       historyStatuses[rand.Intn(len(historyStatuses))],
-				DeployedAt:   time.Now().Add(-time.Duration(j*rand.Intn(24)+rand.Intn(24)) * time.Hour),
+			histStatus := historyStatuses[rand.Intn(len(historyStatuses))]
+			deployedAt := base.Add(-time.Duration(historyCount-1-j) * step)
+			if err := deployment.AddHistory(
+				fmt.Sprintf("v2.%d.%d", rand.Intn(5), rand.Intn(10)),
+				fmt.Sprintf("operator-%d", rand.Intn(10)+1),
+				30+rand.Intn(570),
+				histStatus,
+				deployedAt,
+			); err != nil {
+				slog.Error("seed deployment add history failed", "error", err)
+				break
 			}
 		}
 
-		if err := db.Create(&histories).Error; err != nil {
-			slog.Error("seed deployment history failed", "error", err)
+		// 少量应用模拟"新一轮发布进行中"：历史已按上一轮结果落定（终态不变式满足），
+		// ChangeStatus(deploying) 表示新一轮发布开始——根状态进入中间态、历史保留上一轮结果，
+		// 与领域状态机语义一致（deploying 下根状态与最新历史不同步是合法的）
+		if rand.Intn(100) < 20 {
+			if err := deployment.ChangeStatus(deploymentdomain.DeploymentStatusDeploying); err != nil {
+				slog.Error("seed deployment change status failed", "error", err)
+			}
+		}
+
+		// 聚合一次落库(根 + 历史级联保存),无两步 Create 的中间态窗口
+		if err := db.Create(deployment).Error; err != nil {
+			slog.Error("seed deployment failed", "error", err)
 		}
 	}
 }
