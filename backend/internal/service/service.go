@@ -2,6 +2,7 @@ package service
 
 import (
 	agentsvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/agent/service"
+	deploymentsvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/deployment/service"
 	serversvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/server/service"
 	usersvc "github.com/Tania-X/devops-dashboard/backend/internal/dashboard/user/service"
 	"github.com/Tania-X/devops-dashboard/backend/internal/logs"
@@ -15,7 +16,7 @@ type Services struct {
 	db *gorm.DB
 
 	ServerService     *serversvc.ServerService
-	DeploymentService *DeploymentService
+	DeploymentService *deploymentsvc.DeploymentService
 	LogService        *LogService
 	DashboardService  *DashboardService
 	MonitorService    *MonitorService
@@ -45,7 +46,7 @@ func NewServices(db *gorm.DB, history *monitor.History, rc *monitor.RemoteCollec
 	return &Services{
 		db:                db,
 		ServerService:     serversvc.NewServerService(db),
-		DeploymentService: NewDeploymentService(db),
+		DeploymentService: deploymentsvc.NewDeploymentService(db),
 		LogService:        NewLogService(logReader),
 		DashboardService:  NewDashboardService(db, history, rc, alerter),
 		MonitorService:    NewMonitorService(db),
