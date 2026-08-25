@@ -145,16 +145,21 @@ func seedDeployments(db *gorm.DB) {
 			continue
 		}
 
-		// 历史经聚合根方法追加:根状态/版本/时间与最新一次部署结果自动同步(不变式)
+		// 历史经聚合根方法追加:根状态/版本/时间与最新一次部署结果自动同步(不变式)。
+		// 追加顺序按时间严格从旧到新(固定步长,无随机波动):最后一次 AddHistory 对应
+		// 最新部署——根状态/LastDeployedAt/LatestHistory 指向最新一次,而非最旧一次。
 		historyCount := 3 + rand.Intn(6)
+		step := time.Duration(6+rand.Intn(12)) * time.Hour // 相邻两次部署间隔 6~18h
+		base := time.Now()
 		for j := 0; j < historyCount; j++ {
 			histStatus := historyStatuses[rand.Intn(len(historyStatuses))]
+			deployedAt := base.Add(-time.Duration(historyCount-1-j) * step)
 			if err := deployment.AddHistory(
 				fmt.Sprintf("v2.%d.%d", rand.Intn(5), rand.Intn(10)),
 				fmt.Sprintf("operator-%d", rand.Intn(10)+1),
 				30+rand.Intn(570),
 				histStatus,
-				time.Now().Add(-time.Duration(j*rand.Intn(24)+rand.Intn(24))*time.Hour),
+				deployedAt,
 			); err != nil {
 				slog.Error("seed deployment add history failed", "error", err)
 				break
