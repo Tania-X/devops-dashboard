@@ -26,7 +26,7 @@ const (
 //
 // 聚合边界 = Deployment + DeploymentHistory：
 //   - 历史只能经 AddHistory 追加，根状态与最新一次部署结果保持同步（不变式）
-//   - ChangeStatus 仅用于部署流程中间态（pending → deploying → success/failed）
+//   - ChangeStatus 仅用于部署流程中间态（pending → deploying），终态一律经 AddHistory
 //   - 外部不得直接修改 Histories
 //
 // 说明：Histories 因 GORM 关联持久化（Preload/外键保存）需要保持导出字段；
@@ -103,13 +103,14 @@ func (d *Deployment) AddHistory(version, operator string, durationSec int, statu
 	return nil
 }
 
-// ChangeStatus 变更根状态（仅限部署流程中间态：pending → deploying → success/failed）。
-// 最终结果状态一律由 AddHistory 写入，避免根状态与最新历史脱节。
+// ChangeStatus 变更根状态（仅限部署流程中间态：pending → deploying）。
+// 终态（success/failed）一律由 AddHistory 写入——AddHistory 内部会同步根状态与
+// 最新历史；绕过它直接写终态会使根状态与最新历史脱节（违反不变式）。
 func (d *Deployment) ChangeStatus(status string) error {
 	switch status {
-	case DeploymentStatusPending, DeploymentStatusDeploying, DeploymentStatusSuccess, DeploymentStatusFailed:
+	case DeploymentStatusPending, DeploymentStatusDeploying:
 	default:
-		return fmt.Errorf("非法状态: %q", status)
+		return fmt.Errorf("非法状态: %q（终态必须经 AddHistory 写入）", status)
 	}
 	d.Status = status
 	return nil

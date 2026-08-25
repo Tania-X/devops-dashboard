@@ -100,6 +100,12 @@ func TestChangeStatus(t *testing.T) {
 	if err := d.ChangeStatus("broken"); err == nil {
 		t.Error("非法状态应报错")
 	}
+	// 终态必须经 AddHistory 写入（内部同步根状态与最新历史），直接 ChangeStatus 应被拒绝
+	for _, final := range []string{DeploymentStatusSuccess, DeploymentStatusFailed} {
+		if err := d.ChangeStatus(final); err == nil {
+			t.Errorf("ChangeStatus(%s) 应报错：终态必须经 AddHistory 写入", final)
+		}
+	}
 }
 
 func TestLatestHistory_Empty(t *testing.T) {
